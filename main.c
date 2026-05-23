@@ -2,41 +2,59 @@
 #include <string.h>
 #include <stdlib.h>
 
-char** SelectMemory(int size, int size2) {
-    char **array = malloc(size * sizeof(char*));
-    for (int i = 0; i < size; i++)
-    {
-        array[i] = malloc(size2 * sizeof(char));
+
+struct Row {
+    char* data;
+    int length;
+};
+
+
+struct Array {
+    struct Row* rows;
+    int rowsCount;
+};
+
+
+struct Row* CreateRows(int rowsCount, int rowsLength) {
+    struct Row* rows = malloc(rowsCount * sizeof(struct Row));
+    if (rows == NULL) {
+        return NULL;
     }
+    for (int i = 0; i < rowsCount; i++)
+    {
+        rows[i].data = malloc(rowsLength * sizeof(char));
+        rows[i].length = rowsLength;
+    }
+    return rows;
+}
+
+
+struct Array* CreateArray(int rowsCount, int rowsLength) {
+    struct Array *array = malloc(sizeof(struct Array));
+    if (array == NULL) {
+        return NULL;
+    }
+    array->rows = CreateRows(rowsCount, rowsLength);
+    array->rowsCount = rowsCount;
     return array;
 }
 
-void FillArray(char **array, int size, int size2) {
-    for (int i = 0; i < size; i++) {
-        if (array[i + 1] == NULL) {
 
-        }
+void Free(struct Array* array) {
+    for (int i = 0; i < array->rowsCount; i++) {
+        free(array->rows[i].data);
     }
-}
-
-void Free(char **array, int size) {
-    for (int i = 0; i < size; i++) {
-        free(array[i]);
-    }
+    free(array->rows);
     free(array);
 }
 
-void PrintArray(char **array, int size) {
-    for (int i = 0; i < size; i++) {
-        printf("%s ", array[i]);
-        printf("\n");
-    }
-}
 
 int main() {
     
     char input[100];
-    char **text;
+    int startRows = 10;
+    int startColumns = 100;
+    struct Array *text = CreateArray(startRows, startColumns);
     
     while (1) {
         printf("\nSupported commands.");
@@ -50,7 +68,7 @@ int main() {
         if (strcmp(input, "1") == 0) {
             printf("Enter text to append: ");
             fgets(input, sizeof(input), stdin);
-            text = SelectMemory(5, 10);
+            
             
         }
         else if (strcmp(input, "5") == 0) {
@@ -64,6 +82,6 @@ int main() {
         }
     }
     
-    free(text);
+    Free(text);
     return 0;
 }
