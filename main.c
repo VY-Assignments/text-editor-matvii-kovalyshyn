@@ -11,6 +11,7 @@ struct Row {
 struct Array {
     struct Row* rows;
     int rowsCount;
+    int currentRow;
 };
 
 
@@ -36,27 +37,38 @@ struct Array* CreateArray(int rowsCount) {
     }
     array->rows = CreateRows(rowsCount);
     array->rowsCount = rowsCount;
+    array->currentRow = 0;
     return array;
 }
 
 
-int FindLastRow(struct Array* array) {
-    if (array->rows[0].data == NULL || strlen(array->rows[0].data) == 0) {
-        return 0;
-    }
+// int FindLastRow(struct Array* array) {
+//     printf("last row 0\n");
+//     if (array->rows[0].data == NULL || strlen(array->rows[0].data) == 0) {
+//         return 0;
+//     }
+//     printf("last row 1\n");
 
-    for (int i = 0; i < array->rowsCount; i++) {
-        if (array->rows[i].data == NULL || strlen(array->rows[i].data) == 0) {
-            return i - 1;
-        }
-    }
+//     for (int i = 0; i < array->rowsCount; i++) {
+//         if (array->rows[i].data == NULL || strlen(array->rows[i].data) == 0) {
+//             return i - 1;
+//         }
+//     }
     
-    return -1;
-}
+//     // for (int i = 0; i < array->rowsCount; i++) {
+//     //     if (array->rows[i].data[strlen(array->rows[i].data)] - 1 == '\n') {
+//     //         return i;
+//     //     }
+//     // }
+//     printf("last row 2\n");
+
+//     return -1;
+
+// }
 
 
 void AddToEnd(struct Array* array, char* text) {
-    int endRow = FindLastRow(array);
+    int endRow = array->currentRow;
     if (array->rows[endRow].data == NULL) {
         array->rows[endRow].data = strdup(text);
         return;
@@ -76,14 +88,49 @@ void AddToEnd(struct Array* array, char* text) {
 }
 
 
+void AddNewLine(struct Array* array) {
+    array->currentRow += 1;
+}
+
+
+void Search(struct Array* array, char* text, int* index) {
+    for (int i = 0; i <= array->currentRow; i++) {
+        if (i == array->currentRow && array->rows[array->currentRow].data == NULL) {
+            break;
+        }
+        char* textIndex = strstr(array->rows[i].data, text);
+        if (textIndex != NULL) {
+            index[0] = i;
+            index[1] = textIndex - array->rows[i].data;
+            return;
+        }
+    }
+    index[0] = -1;
+    index[1] = -1;
+}
+
+void SearchAll(struct Array* array, char* text) {
+
+}
+
+
 void Print(struct Array* array) {
     for (int i = 0; i < array->rowsCount; i++) {
         if (array->rows[i].data == NULL) {
-            break;
+            if (i >= array->currentRow) {
+                break;
+            }
+            else {
+                printf("\n");
+            }
         }
-        printf("%s\n", array->rows[i].data);
+        else {
+            printf("%s\n", array->rows[i].data);
+        }
+        
     }
 }
+
 
 void Free(struct Array* array) {
     for (int i = 0; i < array->rowsCount; i++) {
@@ -92,6 +139,7 @@ void Free(struct Array* array) {
     free(array->rows);
     free(array);
 }
+
 
 void ClearConsole() {
     // \e[1J — очищає екран від курсора вгору
@@ -102,9 +150,8 @@ void ClearConsole() {
 
 int main() {
     
-    char input[256];
+    int command = 0;
     struct Array *textArray = CreateArray(10);
-    // textArray->rows[0].data = "123";
     
     while (1) {
 
@@ -112,28 +159,49 @@ int main() {
         printf("\n1. Append to end.\n2. New line.\n3. Save to file.\n4. Load from file.\n5. Print to console.\n6. Insert.\n7. Search.\n8. Exit.\n");
 
         printf("\nChoose the command: ");
-        fgets(input, sizeof(input), stdin);
-        input[strcspn(input, "\n")] = '\0';
+        scanf("%d", &command);
+        while(getchar() != '\n');
 
-        if (strcmp(input, "1") == 0) {
-            // ClearConsole();
+        if (command == 1) {
+            ClearConsole();
             char text[100];
             printf("Enter text to append: ");
             fgets(text, sizeof(text), stdin);
             text[strcspn(text, "\n")] = '\0';
             AddToEnd(textArray, text);
         }
-        else if (strcmp(input, "5") == 0) {
-            // ClearConsole();
-            printf("Text:\n");
+        else if (command == 2) {
+            ClearConsole();
+            AddNewLine(textArray);
+            printf("New line is started.");
+        }
+        else if (command == 5) {
+            ClearConsole();
+            printf("\nText:\n");
             Print(textArray);
         }
-        else if (strcmp(input, "8") == 0) {
-            // ClearConsole();
+        else if (command == 7) {
+            ClearConsole();
+            char text[100];
+            printf("Enter text to search: ");
+            fgets(text, sizeof(text), stdin);
+            text[strcspn(text, "\n")] = '\0';
+            int textPosition[2];
+            
+            Search(textArray, text, textPosition);
+            if (textPosition[0] == -1 || textPosition[1] == -1) {
+                printf("Text is not found.");
+            }
+            else {
+                printf("Text is present in this position: %d %d.", textPosition[0], textPosition[1]);
+            }
+        }
+        else if (command == 8) {
+            ClearConsole();
             break;
         }
         else {
-            // ClearConsole();
+            ClearConsole();
             printf("Unknown command");
         }
     }
