@@ -192,6 +192,48 @@ void Free(struct Array* array) {
 }
 
 
+void SaveToFile(struct Array* array, char* fileName) {
+    FILE* file;
+    file = fopen(fileName, "w");
+    if (file != NULL) {
+        for (int i = 0; i < array->rowsCount; i++) {
+            if (array->rows[i].data == NULL) {
+                if (i >= array->currentRow) {
+                    break;
+                }
+                else {
+                    fputs("\n", file);
+                }
+            }
+            else {
+                fputs(array->rows[i].data, file);
+                fputs("\n", file);
+                
+            }
+        }
+        fclose(file);
+    }
+}
+
+
+void LoadFromFile(struct Array** array, char* fileName) {
+    FILE* file;
+    char row[100];
+    file = fopen(fileName, "r");
+    if (file == NULL) {
+        printf("Error opening file.");
+    }
+    else {
+        *array = CreateArray(10);
+        int i = 0;
+        while (fgets(row, 100, file) != NULL) {
+            AddToEnd(*array, row);
+            i++;
+        }
+        fclose(file);
+    }
+}
+
 void ClearConsole() {
     // \e[1J — очищає екран від курсора вгору
     // \e[H  — повертає курсор у лівий верхній кут (0,0)
@@ -202,6 +244,7 @@ void ClearConsole() {
 int main() {
     
     int command = 0;
+    
     struct Array *textArray = CreateArray(10);
     
     while (1) {
@@ -226,10 +269,27 @@ int main() {
             AddNewLine(textArray);
             printf("New line is started.");
         }
+        else if (command == 3) {
+            printf("Enter the file name for saving: ");
+            char file[100];
+            fgets(file, sizeof(file), stdin);
+            SaveToFile(textArray, file);
+            printf("Text has been saved successfully.");
+        }
+        else if (command == 4) {
+            printf("Enter the file name for loading: ");
+            char file[100];
+            fgets(file, sizeof(file), stdin);
+            LoadFromFile(&textArray, file);
+            printf("Text has been loaded successfully.");
+        }
         else if (command == 5) {
             // ClearConsole();
             printf("\nText:\n");
             Print(textArray);
+        }
+        else if (command == 6) {
+            
         }
         else if (command == 7) {
             // ClearConsole();
