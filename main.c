@@ -93,6 +93,23 @@ void AddNewLine(struct Array* array) {
 }
 
 
+void Insert(struct Array* array, short line, short index, char* text) {
+   
+    char* afterIndex = strcat(text, array->rows[line].data + index);
+    
+    int newLength = strlen(array->rows[line].data) + strlen(afterIndex) + 1;
+    char* temp = realloc(array->rows[line].data, newLength * sizeof(char));
+    if (temp == NULL) {
+        printf("MEMORY ERROR");
+        return;
+    }
+    array->rows[line].data = temp;
+    array->rows[line].data[index] = '\0';
+    strcat(array->rows[line].data, afterIndex);
+    
+}
+
+
 int Search(struct Array* array, char* text, int** indexes) {
     
     int lastIndex = 0;
@@ -111,10 +128,6 @@ int Search(struct Array* array, char* text, int** indexes) {
         int lenCounter = 0;
         
         for (int j = 0; j < rowLen; j++) {
-            printf("j = %d\n", j);
-            printf("lenCounter = %d\n", lenCounter);
-            printf("array->rows[i].data[j] = %c\n", array->rows[i].data[j]);
-            printf("text[lenCounter] = %c\n", text[lenCounter]);
             
             if (array->rows[i].data[j] == '\0') {
                 break;
@@ -125,7 +138,6 @@ int Search(struct Array* array, char* text, int** indexes) {
             }
             
             else {
-                printf("lenCounter is zero now\n");
                 j -= lenCounter;
                 lenCounter = 0;
             }
@@ -216,22 +228,24 @@ void SaveToFile(struct Array* array, char* fileName) {
 }
 
 
-void LoadFromFile(struct Array** array, char* fileName) {
+_Bool LoadFromFile(struct Array** array, char* fileName) {
     FILE* file;
     char row[100];
     file = fopen(fileName, "r");
     if (file == NULL) {
         printf("Error opening file.");
+        return 0;
     }
     else {
         *array = CreateArray(10);
         int i = 0;
-        while (fgets(row, 100, file) != NULL) {
+        while (fgets(row, sizeof(row), file) != NULL) {
             AddToEnd(*array, row);
             i++;
         }
         fclose(file);
     }
+    return 1;
 }
 
 void ClearConsole() {
@@ -243,7 +257,7 @@ void ClearConsole() {
 
 int main() {
     
-    int command = 0;
+    short command = 0;
     
     struct Array *textArray = CreateArray(10);
     
@@ -280,8 +294,9 @@ int main() {
             printf("Enter the file name for loading: ");
             char file[100];
             fgets(file, sizeof(file), stdin);
-            LoadFromFile(&textArray, file);
-            printf("Text has been loaded successfully.");
+            if (LoadFromFile(&textArray, file)) {
+                printf("Text has been loaded successfully.");
+            }
         }
         else if (command == 5) {
             // ClearConsole();
@@ -289,7 +304,17 @@ int main() {
             Print(textArray);
         }
         else if (command == 6) {
-            
+            printf("Choose line and index: ");
+            short line;
+            short index;
+            char text[100];
+            scanf("%d", &line);
+            scanf("%d", &index);
+            while(getchar() != '\n');
+            printf("Enter text to insert: ");
+            fgets(text, sizeof(text), stdin);
+            text[strcspn(text, "\n")] = '\0';
+            Insert(textArray, line, index, text);
         }
         else if (command == 7) {
             // ClearConsole();
