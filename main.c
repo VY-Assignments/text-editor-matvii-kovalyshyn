@@ -93,24 +93,75 @@ void AddNewLine(struct Array* array) {
 }
 
 
-void Search(struct Array* array, char* text, int* index) {
+int Search(struct Array* array, char* text, int** indexes) {
+    
+    int lastIndex = 0;
+
     for (int i = 0; i <= array->currentRow; i++) {
-        if (i == array->currentRow && array->rows[array->currentRow].data == NULL) {
+        int textLen = strlen(text);
+        int rowLen = strlen(array->rows[i].data);
+        
+        if (i == array->currentRow && (array->rows[array->currentRow].data == NULL || strlen(array->rows[array->currentRow].data) == 0)) {
             break;
         }
-        char* textIndex = strstr(array->rows[i].data, text);
-        if (textIndex != NULL) {
-            index[0] = i;
-            index[1] = textIndex - array->rows[i].data;
-            return;
+        if (array->rows[i].data == NULL || rowLen == 0) {
+            continue;
+        }
+
+        int lenCounter = 0;
+        
+        for (int j = 0; j < rowLen; j++) {
+            printf("j = %d\n", j);
+            printf("lenCounter = %d\n", lenCounter);
+            printf("array->rows[i].data[j] = %c\n", array->rows[i].data[j]);
+            printf("text[lenCounter] = %c\n", text[lenCounter]);
+            
+            if (array->rows[i].data[j] == '\0') {
+                break;
+            }
+
+            if (array->rows[i].data[j] == text[lenCounter]) {
+                lenCounter ++;
+            }
+            
+            else {
+                printf("lenCounter is zero now\n");
+                j -= lenCounter;
+                lenCounter = 0;
+            }
+            
+            if (lenCounter == textLen) {
+
+                int* temp = realloc(*indexes, (lastIndex + 2) * sizeof(int));
+                if (temp == NULL) {
+                    printf("MEMORY ERROR");
+                    return lastIndex;
+                }
+                
+                *indexes = temp;                
+                
+                (*indexes)[lastIndex] = i;
+                (*indexes)[lastIndex + 1] = j - (strlen(text) - 1);
+
+                lastIndex += 2;
+
+                j -= lenCounter - 1;
+                lenCounter = 0;
+
+                
+                
+            }
         }
     }
-    index[0] = -1;
-    index[1] = -1;
+    return lastIndex;
 }
 
-void SearchAll(struct Array* array, char* text) {
 
+void PrintFoundIndexes(int* indexes, int lastIndex) {
+    
+    for (int i = 0; i < lastIndex; i += 2) {
+        printf("(%d, %d) ", indexes[i], indexes[i + 1]);
+    }
 }
 
 
@@ -163,7 +214,7 @@ int main() {
         while(getchar() != '\n');
 
         if (command == 1) {
-            ClearConsole();
+            // ClearConsole();
             char text[100];
             printf("Enter text to append: ");
             fgets(text, sizeof(text), stdin);
@@ -171,37 +222,46 @@ int main() {
             AddToEnd(textArray, text);
         }
         else if (command == 2) {
-            ClearConsole();
+            // ClearConsole();
             AddNewLine(textArray);
             printf("New line is started.");
         }
         else if (command == 5) {
-            ClearConsole();
+            // ClearConsole();
             printf("\nText:\n");
             Print(textArray);
         }
         else if (command == 7) {
-            ClearConsole();
+            // ClearConsole();
+            
             char text[100];
             printf("Enter text to search: ");
             fgets(text, sizeof(text), stdin);
             text[strcspn(text, "\n")] = '\0';
-            int textPosition[2];
             
-            Search(textArray, text, textPosition);
-            if (textPosition[0] == -1 || textPosition[1] == -1) {
+            int* textPosition = malloc(2 * sizeof(int));
+            if (textPosition == NULL) {
+                printf("MEMORY ERROR");
+                break;
+            }
+            
+            int lastIndex = Search(textArray, text, &textPosition);
+            
+            if (lastIndex == 0) {
                 printf("Text is not found.");
             }
+            
             else {
-                printf("Text is present in this position: %d %d.", textPosition[0], textPosition[1]);
+                printf("Text is present in this position: ");
+                PrintFoundIndexes(textPosition, lastIndex);
             }
         }
         else if (command == 8) {
-            ClearConsole();
+            // ClearConsole();
             break;
         }
         else {
-            ClearConsole();
+            // ClearConsole();
             printf("Unknown command");
         }
     }
