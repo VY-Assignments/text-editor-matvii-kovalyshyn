@@ -42,33 +42,21 @@ struct Array* CreateArray(int rowsCount) {
 }
 
 
-// int FindLastRow(struct Array* array) {
-//     printf("last row 0\n");
-//     if (array->rows[0].data == NULL || strlen(array->rows[0].data) == 0) {
-//         return 0;
-//     }
-//     printf("last row 1\n");
-
-//     for (int i = 0; i < array->rowsCount; i++) {
-//         if (array->rows[i].data == NULL || strlen(array->rows[i].data) == 0) {
-//             return i - 1;
-//         }
-//     }
-    
-//     // for (int i = 0; i < array->rowsCount; i++) {
-//     //     if (array->rows[i].data[strlen(array->rows[i].data)] - 1 == '\n') {
-//     //         return i;
-//     //     }
-//     // }
-//     printf("last row 2\n");
-
-//     return -1;
-
-// }
-
-
 void AddToEnd(struct Array* array, char* text) {
     int endRow = array->currentRow;
+    if (endRow >= array->rowsCount) {
+        int newRowsCount = array->rowsCount * 2;
+        struct Row* temp = realloc(array->rows, newRowsCount * sizeof(struct Row));
+        if (temp == NULL) {
+            printf("MEMORY ERROR");
+            return;
+        }
+        array->rows = temp;
+        for (int i = array->rowsCount; i < newRowsCount; i++) {
+            array->rows[i].data = NULL;
+        }
+        array->rowsCount = newRowsCount;
+    }
     if (array->rows[endRow].data == NULL) {
         array->rows[endRow].data = strdup(text);
         return;
@@ -89,24 +77,32 @@ void AddToEnd(struct Array* array, char* text) {
 
 
 void AddNewLine(struct Array* array) {
+    AddToEnd(array, "\n");
     array->currentRow += 1;
+    
 }
 
 
-void Insert(struct Array* array, short line, short index, char* text) {
+_Bool Insert(struct Array* array, short line, short index, char* text) {
    
-    char* afterIndex = strcat(text, array->rows[line].data + index);
-    
-    int newLength = strlen(array->rows[line].data) + strlen(afterIndex) + 1;
+    if (array->rows[line].data == NULL || strlen(array->rows[line].data) == 0)  {
+        return 0;
+    }
+    int newLength = strlen(array->rows[line].data) + strlen(text) + 1;
+    char* afterIndex = malloc((strlen(array->rows[line].data + index) + 1) * sizeof(char));
+    strcpy(afterIndex, array->rows[line].data + index);
     char* temp = realloc(array->rows[line].data, newLength * sizeof(char));
     if (temp == NULL) {
         printf("MEMORY ERROR");
-        return;
+        return 0;
     }
     array->rows[line].data = temp;
     array->rows[line].data[index] = '\0';
+    strcat(array->rows[line].data, text);
     strcat(array->rows[line].data, afterIndex);
     
+    free(afterIndex);
+    return 1;
 }
 
 
@@ -115,12 +111,15 @@ int Search(struct Array* array, char* text, int** indexes) {
     int lastIndex = 0;
 
     for (int i = 0; i <= array->currentRow; i++) {
-        int textLen = strlen(text);
-        int rowLen = strlen(array->rows[i].data);
+        
         
         if (i == array->currentRow && (array->rows[array->currentRow].data == NULL || strlen(array->rows[array->currentRow].data) == 0)) {
             break;
         }
+
+        int textLen = strlen(text);
+        int rowLen = strlen(array->rows[i].data);
+        
         if (array->rows[i].data == NULL || rowLen == 0) {
             continue;
         }
@@ -183,12 +182,9 @@ void Print(struct Array* array) {
             if (i >= array->currentRow) {
                 break;
             }
-            else {
-                printf("\n");
-            }
         }
         else {
-            printf("%s\n", array->rows[i].data);
+            printf("%s", array->rows[i].data);
         }
         
     }
@@ -209,19 +205,13 @@ void SaveToFile(struct Array* array, char* fileName) {
     file = fopen(fileName, "w");
     if (file != NULL) {
         for (int i = 0; i < array->rowsCount; i++) {
-            if (array->rows[i].data == NULL) {
-                if (i >= array->currentRow) {
-                    break;
-                }
-                else {
-                    fputs("\n", file);
-                }
-            }
-            else {
+            if (array->rows[i].data != NULL) {
+                printf("%s\n", array->rows[i].data);
                 fputs(array->rows[i].data, file);
-                fputs("\n", file);
-                
             }
+            
+            
+            
         }
         fclose(file);
     }
@@ -241,6 +231,7 @@ _Bool LoadFromFile(struct Array** array, char* fileName) {
         int i = 0;
         while (fgets(row, sizeof(row), file) != NULL) {
             AddToEnd(*array, row);
+            (*array)->currentRow++;
             i++;
         }
         fclose(file);
@@ -248,10 +239,11 @@ _Bool LoadFromFile(struct Array** array, char* fileName) {
     return 1;
 }
 
+
 void ClearConsole() {
     // \e[1J — очищає екран від курсора вгору
     // \e[H  — повертає курсор у лівий верхній кут (0,0)
-    printf("\e[1J\e[H");
+    // printf("\e[1J\e[H");
 }
 
 
@@ -271,7 +263,7 @@ int main() {
         while(getchar() != '\n');
 
         if (command == 1) {
-            // ClearConsole();
+            ClearConsole();
             char text[100];
             printf("Enter text to append: ");
             fgets(text, sizeof(text), stdin);
@@ -279,18 +271,26 @@ int main() {
             AddToEnd(textArray, text);
         }
         else if (command == 2) {
-            // ClearConsole();
+            ClearConsole();
             AddNewLine(textArray);
             printf("New line is started.");
         }
         else if (command == 3) {
+            ClearConsole();
             printf("Enter the file name for saving: ");
             char file[100];
             fgets(file, sizeof(file), stdin);
-            SaveToFile(textArray, file);
-            printf("Text has been saved successfully.");
+            if (file == NULL || strlen(file) == 0 || file[0] == '\n') {
+                printf("Incorrect file name.");
+            }
+            else {
+                SaveToFile(textArray, file);
+                printf("Text has been saved successfully.");
+            }
+            
         }
         else if (command == 4) {
+            ClearConsole();
             printf("Enter the file name for loading: ");
             char file[100];
             fgets(file, sizeof(file), stdin);
@@ -299,25 +299,33 @@ int main() {
             }
         }
         else if (command == 5) {
-            // ClearConsole();
+            ClearConsole();
             printf("\nText:\n");
             Print(textArray);
+            printf("\n");
         }
         else if (command == 6) {
+            ClearConsole();
             printf("Choose line and index: ");
             short line;
             short index;
             char text[100];
-            scanf("%d", &line);
-            scanf("%d", &index);
-            while(getchar() != '\n');
-            printf("Enter text to insert: ");
-            fgets(text, sizeof(text), stdin);
-            text[strcspn(text, "\n")] = '\0';
-            Insert(textArray, line, index, text);
+            if (scanf("%d %d", &line, &index) != 2) {
+                printf("Invalid input.");
+                while(getchar() != '\n');
+            }
+            else {
+                while(getchar() != '\n');
+                printf("Enter text to insert: ");
+                fgets(text, sizeof(text), stdin);
+                text[strcspn(text, "\n")] = '\0';
+                if(!Insert(textArray, line, index, text)) {
+                    printf("Invalid line or index.");
+                }    
+            }
         }
         else if (command == 7) {
-            // ClearConsole();
+            ClearConsole();
             
             char text[100];
             printf("Enter text to search: ");
@@ -340,13 +348,15 @@ int main() {
                 printf("Text is present in this position: ");
                 PrintFoundIndexes(textPosition, lastIndex);
             }
+
+            free(textPosition);
         }
         else if (command == 8) {
-            // ClearConsole();
+            ClearConsole();
             break;
         }
         else {
-            // ClearConsole();
+            ClearConsole();
             printf("Unknown command");
         }
     }
