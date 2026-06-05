@@ -14,7 +14,7 @@ int main() {
     while (1) {
 
         printf("\nSupported commands.");
-        printf("\n1. Append to end.\n2. New line.\n3. Save to file.\n4. Load from file.\n5. Print to console.\n6. Insert.\n7. Search.\n8. Delete.\n9. Exit.\n");
+        printf("\n1. Append to end.\n2. New line.\n3. Save to file.\n4. Load from file.\n5. Print to console.\n6. Insert.\n7. Insert with replacement.\n8. Search.\n9. Delete.\n10. Exit.\n");
 
         printf("\nChoose the command: ");
         scanf("%d", &command);
@@ -104,6 +104,27 @@ int main() {
         }
         else if (command == 7) {
             ClearConsole();
+            printf("Choose line and index: ");
+            short line;
+            short index;
+            char text[100];
+            if (scanf("%d %d", &line, &index) != 2) {
+                printf("Invalid input.");
+                while(getchar() != '\n');
+            }
+            else {
+                while(getchar() != '\n');
+                printf("Enter text to insert: ");
+                fgets(text, sizeof(text), stdin);
+                text[strcspn(text, "\n")] = '\0';
+                if(!InsertWithReplacement(textArray, line, index, text)) {
+                    printf("Invalid line or index.");
+                }    
+            }
+
+        }
+        else if (command == 8) {
+            ClearConsole();
             
             char text[100];
             printf("Enter text to search: ");
@@ -129,7 +150,7 @@ int main() {
 
             free(textPosition);
         }
-        else if (command == 8) {
+        else if (command == 9) {
             ClearConsole();
             printf("Choose line, index and number of symbols: ");
             short line;
@@ -147,7 +168,7 @@ int main() {
             }
 
         }
-        else if (command == 9) {
+        else if (command == 10) {
             ClearConsole();
             break;
         }

@@ -110,6 +110,29 @@ bool Insert(struct Array* array, short line, short index, char* text) {
     return 1;
 }
 
+bool InsertWithReplacement(struct Array* array, short line, short index, char* text) {
+    
+    if (array->rows[line].data == NULL || strlen(array->rows[line].data) == 0)  {
+        return 0;
+    }
+    if (index > strlen(array->rows[line].data)) {
+        return 0;
+    }
+
+    char* afterIndex = malloc((strlen(array->rows[line].data + index + strlen(text)) + 1) * sizeof(char));
+    strcpy(afterIndex, array->rows[line].data + index + strlen(text));
+    printf("afterIndex = %s\n", afterIndex);
+    array->rows[line].data[index] = '\0';
+    printf("array = %s\n", array->rows[line].data);
+    strcat(array->rows[line].data, text);
+    strcat(array->rows[line].data, afterIndex);
+    printf("result = %s\n", array->rows[line].data);
+
+    free(afterIndex);
+    return 1;
+
+}
+
 
 int Search(struct Array* array, char* text, int** indexes) {
     

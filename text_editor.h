@@ -9,6 +9,7 @@ struct Array* CreateArray(int rowsCount);
 void AddToEnd(struct Array* array, char* text);
 void AddNewLine(struct Array* array);
 bool Insert(struct Array* array, short line, short index, char* text);
+bool InsertWithReplacement(struct Array* array, short line, short index, char* text);
 int Search(struct Array* array, char* text, int** indexes);
 void PrintFoundIndexes(int* indexes, int lastIndex);
 void Print(struct Array* array);
