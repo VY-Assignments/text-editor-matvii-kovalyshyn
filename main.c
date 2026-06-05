@@ -88,6 +88,9 @@ _Bool Insert(struct Array* array, short line, short index, char* text) {
     if (array->rows[line].data == NULL || strlen(array->rows[line].data) == 0)  {
         return 0;
     }
+    if (index > strlen(array->rows[line].data)) {
+        return 0;
+    }
     int newLength = strlen(array->rows[line].data) + strlen(text) + 1;
     char* afterIndex = malloc((strlen(array->rows[line].data + index) + 1) * sizeof(char));
     strcpy(afterIndex, array->rows[line].data + index);
@@ -158,8 +161,6 @@ int Search(struct Array* array, char* text, int** indexes) {
 
                 j -= lenCounter - 1;
                 lenCounter = 0;
-
-                
                 
             }
         }
@@ -206,12 +207,8 @@ void SaveToFile(struct Array* array, char* fileName) {
     if (file != NULL) {
         for (int i = 0; i < array->rowsCount; i++) {
             if (array->rows[i].data != NULL) {
-                printf("%s\n", array->rows[i].data);
                 fputs(array->rows[i].data, file);
             }
-            
-            
-            
         }
         fclose(file);
     }
@@ -243,7 +240,7 @@ _Bool LoadFromFile(struct Array** array, char* fileName) {
 void ClearConsole() {
     // \e[1J — очищає екран від курсора вгору
     // \e[H  — повертає курсор у лівий верхній кут (0,0)
-    // printf("\e[1J\e[H");
+    printf("\e[1J\e[H");
 }
 
 
@@ -264,11 +261,31 @@ int main() {
 
         if (command == 1) {
             ClearConsole();
-            char text[100];
+            int capacity = 100;
+            int length = 0;
             printf("Enter text to append: ");
-            fgets(text, sizeof(text), stdin);
-            text[strcspn(text, "\n")] = '\0';
+            char *text = malloc(capacity * sizeof(char));
+            if (text == NULL) {
+                printf("MEMORY ERROR");
+            }
+            char character;
+            while(scanf("%c", &character) == 1 && character != '\n') {
+                if (length + 1 >= capacity) {
+                    capacity *= 2;
+                    char* temp = realloc(text, capacity * sizeof(char));
+                    if (temp == NULL) {
+                        printf("MEMORY ERROR");
+                        break;
+                    }
+                    text = temp;
+                }
+                text[length] = character;
+                length++;
+            }
+            text[length] = '\0';
             AddToEnd(textArray, text);
+            
+            
         }
         else if (command == 2) {
             ClearConsole();
