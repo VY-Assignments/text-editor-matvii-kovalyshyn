@@ -5,6 +5,13 @@
 #include "text_editor.h"
 
 
+struct HistoryAction {
+    enum Action value;
+    int amount;
+    struct HistoryAction* next;
+};
+
+
 struct Row {
     char* data;
 };
@@ -15,6 +22,8 @@ struct Array {
     int rowsCount;
     int currentRow;
     char* copied;
+    struct HistoryAction* lastAction;
+    int actionCount;
 };
 
 
@@ -41,6 +50,10 @@ struct Array* CreateArray(int rowsCount) {
     array->rows = CreateRows(rowsCount);
     array->rowsCount = rowsCount;
     array->currentRow = 0;
+    array->actionCount = 0;
+    array->lastAction = malloc(sizeof(struct HistoryAction));
+    array->lastAction->value = NoneAction;
+    array->lastAction->amount = 0;
     return array;
 }
 
@@ -83,7 +96,6 @@ void AddNewLine(struct Array* array) {
     AddToEnd(array, "\n");
     array->currentRow += 1;
     AddToEnd(array, "\0");
-    
 }
 
 
@@ -215,16 +227,23 @@ void PrintFoundIndexes(int* indexes, int lastIndex) {
 
 
 void Print(struct Array* array) {
-    for (int i = 0; i < array->rowsCount; i++) {
-        if (array->rows[i].data == NULL) {
-            if (i >= array->currentRow) {
-                break;
-            }
-        }
-        else {
-            printf("%s", array->rows[i].data);
-        }
+    // for (int i = 0; i < array->rowsCount; i++) {
+    //     if (array->rows[i].data == NULL) {
+    //         if (i >= array->currentRow) {
+    //             break;
+    //         }
+    //     }
+    //     else {
+    //         printf("%s", array->rows[i].data);
+    //     }
         
+    // }
+
+    for (int i = 0; i <= array->currentRow; i++) {
+        if (array->rows[i].data == NULL) {
+            continue;
+        }
+        printf("%s", array->rows[i].data);
     }
 }
 
@@ -239,20 +258,17 @@ bool Delete(struct Array* array, short line, short index, int symbols ) {
     int newLength = strlen(array->rows[line].data) - symbols + 1;
     char* endRow = malloc((strlen(array->rows[line].data + symbols) + 1) * sizeof(char));
     strcpy(endRow, array->rows[line].data + index + symbols + 1);
-    printf("endRow = %s\n", endRow);
     char* temp = realloc(array->rows[line].data, newLength * sizeof(char));
     if (temp == NULL) {
         printf("MEMORY ERROR[DELETE]");
         return 0;
     }
     array->rows[line].data = temp;
-    printf("row = %s\n", array->rows[line].data);
     array->rows[line].data[index] = '\0';
     strcat(array->rows[line].data, endRow);
     
     free(endRow);
 
-    printf("result = %s\n", array->rows[line].data);
     return 1;
 }
 
@@ -345,5 +361,56 @@ void ClearConsole() {
     // \e[1J — очищає екран від курсора вгору
     // \e[H  — повертає курсор у лівий верхній кут (0,0)
     // printf("\e[1J\e[H");
+}
+
+
+void HistoryPush(struct Array* array, enum Action action, int amount) {
+    struct HistoryAction* newAction = malloc(sizeof(struct HistoryAction));
+    if (newAction == NULL) {
+        printf("MEMORY ERROR");
+        return;
+    }
+
+    newAction->value = action;
+    newAction->next = array->lastAction;
+    newAction->amount = amount;
+    array->lastAction = newAction;
+    array->actionCount++;
+}
+
+
+void HistoryPop(struct Array* array) {
+    if (array->lastAction == NoneAction) {
+        return;
+    }
+    struct HistoryAction* last = array->lastAction;
+    array->lastAction = array->lastAction->next;
+    free(last);
+    array->actionCount--;
+}
+
+
+void Undo(struct Array* array) {
+    switch(array->lastAction->value) {
+        case AddToEndAction:
+            Delete(array, array->currentRow, strlen(array->rows[array->currentRow].data) - array->lastAction->amount, array->lastAction->amount);
+            break;
+        case AddNewLineAction:
+            free(array->rows[array->currentRow].data);
+            if (array->currentRow < array->rowsCount - 1) {
+                array->rows[array->currentRow] = array->rows[array->rowsCount];
+            }
+            array->currentRow--;
+            array->rows[array->rowsCount].data = NULL;
+            Delete(array, array->currentRow ,strlen(array->rows[array->currentRow].data) - 1, 1);
+            break;
+
+    }
+    HistoryPop(array);
+}
+
+
+void Redo() {
+
 }
 
