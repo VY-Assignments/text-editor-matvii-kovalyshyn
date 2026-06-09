@@ -6,12 +6,19 @@
 
 
 struct ActionInfo* CreateActionInfo(int amount, int line, int index, char* prevText) {
-     struct ActionInfo* actionInfo = malloc(sizeof(struct ActionInfo));
-     actionInfo->amount = amount;
-     actionInfo->line = line;
-     actionInfo->index = index;
-     actionInfo->prevText = prevText;
-     return actionInfo;
+    struct ActionInfo* actionInfo = malloc(sizeof(struct ActionInfo));
+    actionInfo->amount = amount;
+    actionInfo->line = line;
+    actionInfo->index = index;
+    
+    char* temp = malloc((strlen(prevText) + 1) * sizeof(char));
+    if (temp == NULL) {
+        printf("MEMORY ERROR");
+        return NULL;
+    }
+    strcpy(temp, prevText);
+    actionInfo->prevText = temp;
+    return actionInfo;
 }
 
 
@@ -222,7 +229,7 @@ void Print(struct Array* array) {
 }
 
 
-bool Delete(struct Array* array, short line, short index, int symbols ) {
+bool Delete(struct Array* array, short line, short index, int symbols) {
     if (array->rows[line].data == NULL || strlen(array->rows[line].data) == 0)  {
         return 0;
     }
@@ -390,7 +397,8 @@ void Undo(struct Array* array) {
             HistoryPop(array);
             break;
         case InsertWithReplacementAction:
-            InsertWithReplacement(array, array->lastAction->actionInfo->line, array->lastAction->actionInfo->index, array->lastAction->actionInfo->prevText);
+            Delete(array, array->lastAction->actionInfo->line, array->lastAction->actionInfo->index, array->lastAction->actionInfo->amount);
+            Insert(array, array->lastAction->actionInfo->line, array->lastAction->actionInfo->index, array->lastAction->actionInfo->prevText);
             HistoryPop(array);
             break;
         

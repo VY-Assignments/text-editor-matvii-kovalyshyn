@@ -100,15 +100,18 @@ int main() {
                 printf("Enter text to insert: ");
                 fgets(text, sizeof(text), stdin);
                 text[strcspn(text, "\n")] = '\0';
-                if(!InsertWithReplacement(textArray, line, index, text)) {
-                    printf("Invalid line or index.");
-                }
+                
                 char* temp = malloc(strlen(text) * sizeof(char));
                 if (temp == NULL) {
                     printf("MEMORY ERROR");
                 }
                 strcpy(temp, textArray->rows[line].data + index);
                 temp[strlen(text) - 1] = '\0'; 
+
+                if(!InsertWithReplacement(textArray, line, index, text)) {
+                    printf("Invalid line or index.");
+                }
+                
                 struct ActionInfo* actionInfo = CreateActionInfo(strlen(text), line, index, temp);    
                 HistoryPush(textArray, InsertWithReplacementAction, actionInfo);
             }
