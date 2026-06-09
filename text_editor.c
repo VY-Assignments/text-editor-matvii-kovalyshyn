@@ -5,16 +5,21 @@
 #include "text_editor.h"
 
 
-struct Row {
-    char* data;
-};
-
-
-struct Array {
-    struct Row* rows;
-    int rowsCount;
-    int currentRow;
-};
+struct ActionInfo* CreateActionInfo(int amount, int line, int index, char* prevText) {
+    struct ActionInfo* actionInfo = malloc(sizeof(struct ActionInfo));
+    actionInfo->amount = amount;
+    actionInfo->line = line;
+    actionInfo->index = index;
+    
+    char* temp = malloc((strlen(prevText) + 1) * sizeof(char));
+    if (temp == NULL) {
+        printf("MEMORY ERROR");
+        return NULL;
+    }
+    strcpy(temp, prevText);
+    actionInfo->prevText = temp;
+    return actionInfo;
+}
 
 
 struct Row* CreateRows(int rowsCount) {
@@ -40,6 +45,12 @@ struct Array* CreateArray(int rowsCount) {
     array->rows = CreateRows(rowsCount);
     array->rowsCount = rowsCount;
     array->currentRow = 0;
+    array->undoLastAction = malloc(sizeof(struct HistoryAction));
+    array->undoLastAction->value = NoneAction;
+    array->undoLastAction->actionInfo = NULL;
+    array->redoLastAction = malloc(sizeof(struct HistoryAction));
+    array->redoLastAction->value = NoneAction;
+    array->undoLastAction->actionInfo = NULL;
     return array;
 }
 
@@ -81,18 +92,18 @@ void AddToEnd(struct Array* array, char* text) {
 void AddNewLine(struct Array* array) {
     AddToEnd(array, "\n");
     array->currentRow += 1;
-    
+    AddToEnd(array, "\0");
 }
 
 
 bool Insert(struct Array* array, short line, short index, char* text) {
-   
-    if (array->rows[line].data == NULL || strlen(array->rows[line].data) == 0)  {
+    if ((array->rows[line].data == NULL || strlen(array->rows[line].data) == 0) && line > array->currentRow)  {
         return 0;
     }
     if (index > strlen(array->rows[line].data)) {
         return 0;
     }
+    
     int newLength = strlen(array->rows[line].data) + strlen(text) + 1;
     char* afterIndex = malloc((strlen(array->rows[line].data + index) + 1) * sizeof(char));
     strcpy(afterIndex, array->rows[line].data + index);
@@ -110,8 +121,8 @@ bool Insert(struct Array* array, short line, short index, char* text) {
     return 1;
 }
 
+
 bool InsertWithReplacement(struct Array* array, short line, short index, char* text) {
-    
     if (array->rows[line].data == NULL || strlen(array->rows[line].data) == 0)  {
         return 0;
     }
@@ -119,18 +130,26 @@ bool InsertWithReplacement(struct Array* array, short line, short index, char* t
         return 0;
     }
 
-    char* afterIndex = malloc((strlen(array->rows[line].data + index + strlen(text)) + 1) * sizeof(char));
-    strcpy(afterIndex, array->rows[line].data + index + strlen(text));
-    printf("afterIndex = %s\n", afterIndex);
-    array->rows[line].data[index] = '\0';
-    printf("array = %s\n", array->rows[line].data);
-    strcat(array->rows[line].data, text);
-    strcat(array->rows[line].data, afterIndex);
-    printf("result = %s\n", array->rows[line].data);
-
-    free(afterIndex);
+    int textLength = strlen(text);
+    int startLength = strlen(array->rows[line].data);
+    int afterLength = startLength - index;
+    
+    char* afterIndex = NULL;
+    if (textLength > afterLength) {
+        int newLength = textLength + index;
+        char* temp = realloc(array->rows[line].data, (newLength + 1) * sizeof(char));
+        if (temp == NULL) {
+            printf("MEMORY ERROR");
+            free(afterIndex);
+            return 0;
+        }
+        array->rows[line].data = temp;
+    }
+    memcpy(array->rows[line].data + index, text, textLength);
+    if (textLength > afterLength) {
+        array->rows[line].data[textLength + index] = '\0';
+    }
     return 1;
-
 }
 
 
@@ -203,44 +222,40 @@ void PrintFoundIndexes(int* indexes, int lastIndex) {
 
 
 void Print(struct Array* array) {
-    for (int i = 0; i < array->rowsCount; i++) {
+    for (int i = 0; i <= array->currentRow; i++) {
         if (array->rows[i].data == NULL) {
-            if (i >= array->currentRow) {
-                break;
-            }
+            continue;
         }
-        else {
-            printf("%s", array->rows[i].data);
-        }
-        
+        printf("%s", array->rows[i].data);
     }
 }
 
-bool Delete(struct Array* array, short line, short index, int symbols ) {
+
+bool Delete(struct Array* array, short line, short index, int symbols) { // '\n' bug need to be fixed
     if (array->rows[line].data == NULL || strlen(array->rows[line].data) == 0)  {
         return 0;
     }
     if (index > strlen(array->rows[line].data)) {
         return 0;
     }
+    if (symbols > strlen(array->rows[line].data + index)) {
+        symbols = strlen(array->rows[line].data + index);
+    }
 
     int newLength = strlen(array->rows[line].data) - symbols + 1;
-    char* endRow = malloc((strlen(array->rows[line].data + symbols) + 1) * sizeof(char));
-    strcpy(endRow, array->rows[line].data + index + symbols + 1);
-    printf("endRow = %s\n", endRow);
+    char* endRow = malloc((strlen(array->rows[line].data + index + symbols) + 1) * sizeof(char));
+    strcpy(endRow, array->rows[line].data + index + symbols);
     char* temp = realloc(array->rows[line].data, newLength * sizeof(char));
     if (temp == NULL) {
-        printf("MEMORY ERROR");
+        printf("MEMORY ERROR[DELETE]");
         return 0;
     }
     array->rows[line].data = temp;
-    printf("row = %s\n", array->rows[line].data);
     array->rows[line].data[index] = '\0';
     strcat(array->rows[line].data, endRow);
     
     free(endRow);
 
-    printf("result = %s\n", array->rows[line].data);
     return 1;
 }
 
@@ -290,9 +305,198 @@ bool LoadFromFile(struct Array** array, char* fileName) {
 }
 
 
+bool Copy(struct Array* array, short line, short index, int symbols) {
+    if (array->rows[line].data == NULL || strlen(array->rows[line].data) == 0)  {
+        return 0;
+    }
+    if (index > strlen(array->rows[line].data)) {
+        return 0;
+    }
+
+    int actualSymbols = 0;
+    if (symbols > strlen(array->rows[line].data + index)) {
+        actualSymbols = strlen(array->rows[line].data + index);
+    }
+    else {
+        actualSymbols = symbols;
+    }
+
+    char* temp = malloc(actualSymbols * sizeof(char) + 1);
+    if (temp == NULL) {
+        printf("MEMORY ERROR[COPY]");
+        return 0;
+    }
+    char* copied = temp;
+    strncpy(copied, array->rows[line].data + index, actualSymbols);
+    copied[actualSymbols] = '\0';
+    array->copied = copied;
+    return 1;
+} 
+
+
+bool Paste(struct Array* array, short line, short index) {
+    return Insert(array, line, index, array->copied);
+}
+
+
+bool Cut(struct Array* array, short line, short index, int symbols) {
+    return Copy(array, line, index, symbols) && Delete(array, line, index, symbols);
+}
+
+
 void ClearConsole() {
     // \e[1J — очищає екран від курсора вгору
     // \e[H  — повертає курсор у лівий верхній кут (0,0)
-    printf("\e[1J\e[H");
+    // printf("\e[1J\e[H");
+}
+
+
+void HistoryPush(struct Array* array, enum Action action, struct ActionInfo* actionInfo, bool isUndo) {
+    struct HistoryAction* newAction = malloc(sizeof(struct HistoryAction));
+    if (newAction == NULL) {
+        printf("MEMORY ERROR");
+        return;
+    }
+
+    if (isUndo) {
+        newAction->value = action;
+        newAction->next = array->undoLastAction;
+        newAction->actionInfo = actionInfo;
+        array->undoLastAction = newAction;
+    } 
+    else {
+        newAction->value = action;
+        newAction->next = array->redoLastAction;
+        newAction->actionInfo = actionInfo;
+        array->redoLastAction = newAction;
+    }
+}
+
+
+void HistoryPop(struct Array* array, bool isUndo) {
+    if (isUndo) {
+        if (array->undoLastAction == NoneAction) {
+        return;
+        }
+        struct HistoryAction* last = array->undoLastAction;
+        array->undoLastAction = array->undoLastAction->next;
+        free(last->actionInfo->prevText);
+        free(last);
+    }
+    else {
+        if (array->redoLastAction == NoneAction) {
+        return;
+        }
+        struct HistoryAction* last = array->redoLastAction;
+        array->redoLastAction = array->redoLastAction->next;
+        free(last->actionInfo->prevText);
+        free(last);
+    }
+    
+}
+
+
+void Undo(struct Array* array) {
+    if (array->undoLastAction == NULL || array->undoLastAction->value == NoneAction) {
+        return;
+    }
+    struct ActionInfo* actionInfo = NULL;
+    char* temp = NULL;
+    switch(array->undoLastAction->value) {
+        case AddToEndAction:
+        case InsertAction:
+        case PasteAction:
+            temp = malloc((array->undoLastAction->actionInfo->amount + 1) * sizeof(char));
+            if (temp == NULL) {
+                printf("MEMORY ERROR");
+                return;
+            }
+            strncpy(temp, array->rows[array->undoLastAction->actionInfo->line].data + array->undoLastAction->actionInfo->index, array->undoLastAction->actionInfo->amount);
+            temp[array->undoLastAction->actionInfo->amount] = '\0';
+
+            Delete(array, array->undoLastAction->actionInfo->line, array->undoLastAction->actionInfo->index, array->undoLastAction->actionInfo->amount);
+
+            actionInfo = CreateActionInfo(array->undoLastAction->actionInfo->amount, array->undoLastAction->actionInfo->line, array->undoLastAction->actionInfo->index, temp);
+            HistoryPush(array, DeleteAction, actionInfo, 0);
+            break;
+
+        case AddNewLineAction:
+            free(array->rows[array->currentRow].data);
+            if (array->currentRow < array->rowsCount - 1) {
+                array->rows[array->currentRow] = array->rows[array->rowsCount];
+            }
+            array->currentRow--;
+            array->rows[array->rowsCount].data = NULL;
+            Delete(array, array->currentRow ,strlen(array->rows[array->currentRow].data) - 1, 1);
+            
+            actionInfo = CreateActionInfo(1, array->currentRow, 0, "");
+            HistoryPush(array, DeleteLineAction, actionInfo, 0);
+            break;
+        
+        case InsertWithReplacementAction:
+            temp = malloc((array->undoLastAction->actionInfo->amount + 1) * sizeof(char));
+            if (temp == NULL) {
+                printf("MEMORY ERROR");
+                return;
+            }
+            strncpy(temp, array->rows[array->undoLastAction->actionInfo->line].data + array->undoLastAction->actionInfo->index, array->undoLastAction->actionInfo->amount);
+            temp[array->undoLastAction->actionInfo->amount] = '\0';
+
+            Delete(array, array->undoLastAction->actionInfo->line, array->undoLastAction->actionInfo->index, array->undoLastAction->actionInfo->amount);
+            Insert(array, array->undoLastAction->actionInfo->line, array->undoLastAction->actionInfo->index, array->undoLastAction->actionInfo->prevText);
+            
+            actionInfo = CreateActionInfo(array->undoLastAction->actionInfo->amount, array->undoLastAction->actionInfo->line, array->undoLastAction->actionInfo->index, temp);
+            HistoryPush(array, InsertWithReplacementAction, actionInfo, 0);
+            break;
+
+        case DeleteAction:
+        case CutAction:
+            Insert(array, array->undoLastAction->actionInfo->line, array->undoLastAction->actionInfo->index, array->undoLastAction->actionInfo->prevText);
+            
+            actionInfo = CreateActionInfo(array->undoLastAction->actionInfo->amount, array->undoLastAction->actionInfo->line, array->undoLastAction->actionInfo->index, array->undoLastAction->actionInfo->prevText);
+            HistoryPush(array, InsertAction, actionInfo, 0);
+            break;
+    }
+    
+    HistoryPop(array, 1);
+    free(temp);
+}
+
+
+void Redo(struct Array* array) {
+    if (array->redoLastAction == NULL || array->redoLastAction->value == NoneAction) {
+        return;
+    }
+    struct ActionInfo* actionInfo = NULL;
+    switch(array->redoLastAction->value) {
+        case InsertAction:
+            Delete(array, array->redoLastAction->actionInfo->line, array->redoLastAction->actionInfo->index, array->redoLastAction->actionInfo->amount);
+            
+            actionInfo = CreateActionInfo(array->redoLastAction->actionInfo->amount, array->redoLastAction->actionInfo->line, array->redoLastAction->actionInfo->index, array->redoLastAction->actionInfo->prevText);
+            HistoryPush(array, DeleteAction, actionInfo, 1);
+            break;
+        case InsertWithReplacementAction:
+            Delete(array, array->redoLastAction->actionInfo->line, array->redoLastAction->actionInfo->index, array->redoLastAction->actionInfo->amount);
+            Insert(array, array->redoLastAction->actionInfo->line, array->redoLastAction->actionInfo->index, array->redoLastAction->actionInfo->prevText);
+            
+            actionInfo = CreateActionInfo(array->redoLastAction->actionInfo->amount, array->redoLastAction->actionInfo->line, array->redoLastAction->actionInfo->index, array->redoLastAction->actionInfo->prevText);
+            HistoryPush(array, InsertWithReplacementAction, actionInfo, 1);
+            break;
+        case DeleteAction:
+            Insert(array, array->redoLastAction->actionInfo->line, array->redoLastAction->actionInfo->index, array->redoLastAction->actionInfo->prevText);
+            
+            actionInfo = CreateActionInfo(array->redoLastAction->actionInfo->amount, array->redoLastAction->actionInfo->line, array->redoLastAction->actionInfo->index, array->redoLastAction->actionInfo->prevText);
+            HistoryPush(array, InsertAction, actionInfo, 1);
+            break;
+        case DeleteLineAction:
+            AddNewLine(array);
+            
+            actionInfo = CreateActionInfo(0, 0, 0, "");
+            HistoryPush(array, AddNewLineAction, actionInfo, 1);
+            break;
+
+    }
+    HistoryPop(array, 0);
+    
 }
 

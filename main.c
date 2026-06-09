@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include <stdbool.h>
 #include "text_editor.h"
 
 
@@ -12,9 +11,8 @@ int main() {
     struct Array *textArray = CreateArray(10);
     
     while (1) {
-
         printf("\nSupported commands.");
-        printf("\n1. Append to end.\n2. New line.\n3. Save to file.\n4. Load from file.\n5. Print to console.\n6. Insert.\n7. Insert with replacement.\n8. Search.\n9. Delete.\n10. Exit.\n");
+        printf("\n1. Append to end.\n2. New line.\n3. Save to file.\n4. Load from file.\n5. Print to console.\n6. Insert.\n7. Insert with replacement.\n8. Search.\n9. Delete.\n10. Copy.\n11. Paste.\n12. Cut.\n13. Undo.\n14. Redo.\n0. Exit.\n");
 
         printf("\nChoose the command: ");
         scanf("%d", &command);
@@ -45,13 +43,15 @@ int main() {
             }
             text[length] = '\0';
             AddToEnd(textArray, text);
-            
-            
+            struct ActionInfo* actionInfo = CreateActionInfo(strlen(text), 0, 0, "");
+            HistoryPush(textArray, AddToEndAction, actionInfo, 1);
         }
         else if (command == 2) {
             ClearConsole();
             AddNewLine(textArray);
             printf("New line is started.");
+            struct ActionInfo* actionInfo = CreateActionInfo(0, 0, 0, "");
+            HistoryPush(textArray, AddNewLineAction, actionInfo, 1);
         }
         else if (command == 3) {
             ClearConsole();
@@ -64,8 +64,7 @@ int main() {
             else {
                 SaveToFile(textArray, file);
                 printf("Text has been saved successfully.");
-            }
-            
+            }            
         }
         else if (command == 4) {
             ClearConsole();
@@ -88,7 +87,7 @@ int main() {
             short line;
             short index;
             char text[100];
-            if (scanf("%d %d", &line, &index) != 2) {
+            if (scanf("%d %d", &line, &index) != 2 || line < 0 || index < 0) {
                 printf("Invalid input.");
                 while(getchar() != '\n');
             }
@@ -99,7 +98,9 @@ int main() {
                 text[strcspn(text, "\n")] = '\0';
                 if(!Insert(textArray, line, index, text)) {
                     printf("Invalid line or index.");
-                }    
+                }
+                struct ActionInfo* actionInfo = CreateActionInfo(strlen(text), line, index, "");
+                HistoryPush(textArray, InsertAction, actionInfo, 1);    
             }
         }
         else if (command == 7) {
@@ -108,7 +109,7 @@ int main() {
             short line;
             short index;
             char text[100];
-            if (scanf("%d %d", &line, &index) != 2) {
+            if (scanf("%d %d", &line, &index) != 2 || line < 0 || index < 0) {
                 printf("Invalid input.");
                 while(getchar() != '\n');
             }
@@ -117,11 +118,23 @@ int main() {
                 printf("Enter text to insert: ");
                 fgets(text, sizeof(text), stdin);
                 text[strcspn(text, "\n")] = '\0';
+
+                char* temp = malloc((strlen(text) + 1) * sizeof(char));
+                if (temp == NULL) {
+                    printf("MEMORY ERROR");
+                }
+                strcpy(temp, textArray->rows[line].data + index);
+                if (temp[strlen(text) - 1] == '\n') {
+                    temp[strlen(text) - 1] = '\0';
+                }
+                
                 if(!InsertWithReplacement(textArray, line, index, text)) {
                     printf("Invalid line or index.");
-                }    
+                }
+                
+                struct ActionInfo* actionInfo = CreateActionInfo(strlen(text), line, index, temp);    
+                HistoryPush(textArray, InsertWithReplacementAction, actionInfo, 1);
             }
-
         }
         else if (command == 8) {
             ClearConsole();
@@ -156,19 +169,105 @@ int main() {
             short line;
             short index;
             int symbols;
-            if (scanf("%d %d %d", &line, &index, &symbols) != 3) {
+            if (scanf("%d %d %d", &line, &index, &symbols) != 3 || line < 0 || index < 0 || symbols < 0) {
                 printf("Invalid input.");
                 while(getchar() != '\n');
             }
             else {
                 while(getchar() != '\n');
+
+                char* temp = malloc((symbols + 1) * sizeof(char));
+                if (temp == NULL) {
+                    printf("MEMORY ERROR");
+                }
+                strcpy(temp, textArray->rows[line].data + index);
+                if (temp[strlen(temp) - 1] == '\n') {
+                    temp[strlen(temp) - 1] = '\0';
+                }
+
                 if (!Delete(textArray, line, index, symbols)) {
                     printf("Invalid line or index.");
                 }
+
+                struct ActionInfo* actionInfo = CreateActionInfo(symbols, line, index, temp);
+                HistoryPush(textArray, DeleteAction, actionInfo, 1);
             }
 
         }
         else if (command == 10) {
+            ClearConsole();
+            printf("Choose line, index and number of symbols: ");
+            short line;
+            short index;
+            int symbols;
+            if (scanf("%d %d %d", &line, &index, &symbols) != 3 || line < 0 || index < 0 || symbols < 0) {
+                printf("Invalid input.");
+                while(getchar() != '\n');
+            }
+            else {
+                while(getchar() != '\n');
+                if (!Copy(textArray, line, index, symbols)) {
+                    printf("Invalid line or index.");
+                }
+            }
+        }
+        else if (command == 11) {
+            ClearConsole();
+            printf("Choose line, index: ");
+            short line;
+            short index;
+            if (scanf("%d %d", &line, &index) != 2 || line < 0 || index < 0) {
+                printf("Invalid input.");
+                while(getchar() != '\n');
+            }
+            else {
+                while(getchar() != '\n');
+                if (!Paste(textArray, line, index)) {
+                    printf("Invalid line or index.");
+                }
+                struct ActionInfo* actionInfo = CreateActionInfo(strlen(textArray->copied), line, index, "");
+                HistoryPush(textArray, InsertAction, actionInfo, 1);
+            }
+        }
+        else if (command == 12) {
+            ClearConsole();
+            printf("Choose line, index and number of symbols: ");
+            short line;
+            short index;
+            int symbols;
+            if (scanf("%d %d %d", &line, &index, &symbols) != 3 || line < 0 || index < 0 || symbols < 0) {
+                printf("Invalid input.");
+                while(getchar() != '\n');
+            }
+            else {
+                while(getchar() != '\n');
+                
+                char* temp = malloc((symbols + 1) * sizeof(char));
+                if (temp == NULL) {
+                    printf("MEMORY ERROR");
+                }
+                strcpy(temp, textArray->rows[line].data + index);
+                if (temp[strlen(temp) - 1] == '\n') {
+                    temp[strlen(temp) - 1] = '\0';
+                }
+                
+                if (!Cut(textArray, line, index, symbols)) {
+                    printf("Invalid line or index.");
+                }
+
+                struct ActionInfo* actionInfo = CreateActionInfo(symbols, line, index, temp);
+                HistoryPush(textArray, CutAction, actionInfo, 1); 
+            }
+        }
+        else if (command == 13) {
+            ClearConsole();
+            Undo(textArray);
+        }
+        else if (command == 14) {
+            ClearConsole();
+            Redo(textArray);
+        }
+        else if (command == 0) {
             ClearConsole();
             break;
         }
