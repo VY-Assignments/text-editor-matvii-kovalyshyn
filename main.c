@@ -26,14 +26,14 @@ int main() {
             text[strcspn(text, "\n")] = '\0';
             AddToEnd(textArray, text);
             struct ActionInfo* actionInfo = CreateActionInfo(strlen(text), 0, 0, "");
-            HistoryPush(textArray, AddToEndAction, actionInfo);
+            HistoryPush(textArray, AddToEndAction, actionInfo, 1);
         }
         else if (command == 2) {
             ClearConsole();
             AddNewLine(textArray);
             printf("New line is started.");
             struct ActionInfo* actionInfo = CreateActionInfo(0, 0, 0, "");
-            HistoryPush(textArray, AddNewLineAction, actionInfo);
+            HistoryPush(textArray, AddNewLineAction, actionInfo, 1);
         }
         else if (command == 3) {
             ClearConsole();
@@ -82,7 +82,7 @@ int main() {
                     printf("Invalid line or index.");
                 }
                 struct ActionInfo* actionInfo = CreateActionInfo(strlen(text), line, index, "");
-                HistoryPush(textArray, InsertAction, actionInfo);    
+                HistoryPush(textArray, InsertAction, actionInfo, 1);    
             }
         }
         else if (command == 7) {
@@ -115,7 +115,7 @@ int main() {
                 }
                 
                 struct ActionInfo* actionInfo = CreateActionInfo(strlen(text), line, index, temp);    
-                HistoryPush(textArray, InsertWithReplacementAction, actionInfo);
+                HistoryPush(textArray, InsertWithReplacementAction, actionInfo, 1);
             }
         }
         else if (command == 8) {
@@ -172,7 +172,7 @@ int main() {
                 }
 
                 struct ActionInfo* actionInfo = CreateActionInfo(symbols, line, index, temp);
-                HistoryPush(textArray, CutAction, actionInfo);
+                HistoryPush(textArray, DeleteAction, actionInfo, 1);
             }
 
         }
@@ -208,7 +208,7 @@ int main() {
                     printf("Invalid line or index.");
                 }
                 struct ActionInfo* actionInfo = CreateActionInfo(strlen(textArray->copied), line, index, "");
-                HistoryPush(textArray, InsertAction, actionInfo);
+                HistoryPush(textArray, InsertAction, actionInfo, 1);
             }
         }
         else if (command == 12) {
@@ -238,12 +238,16 @@ int main() {
                 }
 
                 struct ActionInfo* actionInfo = CreateActionInfo(symbols, line, index, temp);
-                HistoryPush(textArray, CutAction, actionInfo); 
+                HistoryPush(textArray, CutAction, actionInfo, 1); 
             }
         }
         else if (command == 13) {
             ClearConsole();
             Undo(textArray);
+        }
+        else if (command == 14) {
+            ClearConsole();
+            Redo(textArray);
         }
         else if (command == 0) {
             ClearConsole();

@@ -45,10 +45,12 @@ struct Array* CreateArray(int rowsCount) {
     array->rows = CreateRows(rowsCount);
     array->rowsCount = rowsCount;
     array->currentRow = 0;
-    array->actionCount = 0;
-    array->lastAction = malloc(sizeof(struct HistoryAction));
-    array->lastAction->value = NoneAction;
-    array->lastAction->actionInfo = NULL;
+    array->undoLastAction = malloc(sizeof(struct HistoryAction));
+    array->undoLastAction->value = NoneAction;
+    array->undoLastAction->actionInfo = NULL;
+    array->redoLastAction = malloc(sizeof(struct HistoryAction));
+    array->redoLastAction->value = NoneAction;
+    array->undoLastAction->actionInfo = NULL;
     return array;
 }
 
@@ -229,7 +231,7 @@ void Print(struct Array* array) {
 }
 
 
-bool Delete(struct Array* array, short line, short index, int symbols) {
+bool Delete(struct Array* array, short line, short index, int symbols) { // '\n' bug need to be fixed
     if (array->rows[line].data == NULL || strlen(array->rows[line].data) == 0)  {
         return 0;
     }
@@ -349,39 +351,75 @@ void ClearConsole() {
 }
 
 
-void HistoryPush(struct Array* array, enum Action action, struct ActionInfo* actionInfo) {
+void HistoryPush(struct Array* array, enum Action action, struct ActionInfo* actionInfo, bool isUndo) {
     struct HistoryAction* newAction = malloc(sizeof(struct HistoryAction));
     if (newAction == NULL) {
         printf("MEMORY ERROR");
         return;
     }
 
-    newAction->value = action;
-    newAction->next = array->lastAction;
-    newAction->actionInfo = actionInfo;
-    array->lastAction = newAction;
-    array->actionCount++;
+    if (isUndo) {
+        newAction->value = action;
+        newAction->next = array->undoLastAction;
+        newAction->actionInfo = actionInfo;
+        array->undoLastAction = newAction;
+    } 
+    else {
+        newAction->value = action;
+        newAction->next = array->redoLastAction;
+        newAction->actionInfo = actionInfo;
+        array->redoLastAction = newAction;
+    }
 }
 
 
-void HistoryPop(struct Array* array) {
-    if (array->lastAction == NoneAction) {
+void HistoryPop(struct Array* array, bool isUndo) {
+    if (isUndo) {
+        if (array->undoLastAction == NoneAction) {
         return;
+        }
+        struct HistoryAction* last = array->undoLastAction;
+        array->undoLastAction = array->undoLastAction->next;
+        free(last->actionInfo->prevText);
+        free(last);
     }
-    struct HistoryAction* last = array->lastAction;
-    array->lastAction = array->lastAction->next;
-    free(last->actionInfo->prevText);
-    free(last);
-    array->actionCount--;
+    else {
+        if (array->redoLastAction == NoneAction) {
+        return;
+        }
+        struct HistoryAction* last = array->redoLastAction;
+        array->redoLastAction = array->redoLastAction->next;
+        free(last->actionInfo->prevText);
+        free(last);
+    }
+    
 }
 
 
 void Undo(struct Array* array) {
-    switch(array->lastAction->value) {
+    if (array->undoLastAction == NULL || array->undoLastAction->value == NoneAction) {
+        return;
+    }
+    struct ActionInfo* actionInfo = NULL;
+    char* temp = NULL;
+    switch(array->undoLastAction->value) {
         case AddToEndAction:
-            Delete(array, array->currentRow, strlen(array->rows[array->currentRow].data) - array->lastAction->actionInfo->amount, array->lastAction->actionInfo->amount);
-            HistoryPop(array);
+        case InsertAction:
+        case PasteAction:
+            temp = malloc((array->undoLastAction->actionInfo->amount + 1) * sizeof(char));
+            if (temp == NULL) {
+                printf("MEMORY ERROR");
+                return;
+            }
+            strncpy(temp, array->rows[array->undoLastAction->actionInfo->line].data + array->undoLastAction->actionInfo->index, array->undoLastAction->actionInfo->amount);
+            temp[array->undoLastAction->actionInfo->amount] = '\0';
+
+            Delete(array, array->undoLastAction->actionInfo->line, array->undoLastAction->actionInfo->index, array->undoLastAction->actionInfo->amount);
+
+            actionInfo = CreateActionInfo(array->undoLastAction->actionInfo->amount, array->undoLastAction->actionInfo->line, array->undoLastAction->actionInfo->index, temp);
+            HistoryPush(array, DeleteAction, actionInfo, 0);
             break;
+
         case AddNewLineAction:
             free(array->rows[array->currentRow].data);
             if (array->currentRow < array->rowsCount - 1) {
@@ -390,35 +428,75 @@ void Undo(struct Array* array) {
             array->currentRow--;
             array->rows[array->rowsCount].data = NULL;
             Delete(array, array->currentRow ,strlen(array->rows[array->currentRow].data) - 1, 1);
-            HistoryPop(array);
-            break;
-        case InsertAction:
-            Delete(array, array->lastAction->actionInfo->line, array->lastAction->actionInfo->index, array->lastAction->actionInfo->amount);
-            HistoryPop(array);
-            break;
-        case InsertWithReplacementAction:
-            Delete(array, array->lastAction->actionInfo->line, array->lastAction->actionInfo->index, array->lastAction->actionInfo->amount);
-            InsertWithReplacement(array, array->lastAction->actionInfo->line, array->lastAction->actionInfo->index, array->lastAction->actionInfo->prevText);
-            HistoryPop(array);
-            break;
-        case DeleteAction:
-            InsertWithReplacement(array, array->lastAction->actionInfo->line, array->lastAction->actionInfo->index, array->lastAction->actionInfo->prevText);
-            HistoryPop(array);
-            break;
-        case PasteAction:
-            Delete(array, array->lastAction->actionInfo->line, array->lastAction->actionInfo->index, array->lastAction->actionInfo->amount);
-            HistoryPop(array);
-            break;
-        case CutAction:
-            InsertWithReplacement(array, array->lastAction->actionInfo->line, array->lastAction->actionInfo->index, array->lastAction->actionInfo->prevText);
-            HistoryPop(array);
+            
+            actionInfo = CreateActionInfo(1, array->currentRow, 0, "");
+            HistoryPush(array, DeleteLineAction, actionInfo, 0);
             break;
         
+        case InsertWithReplacementAction:
+            temp = malloc((array->undoLastAction->actionInfo->amount + 1) * sizeof(char));
+            if (temp == NULL) {
+                printf("MEMORY ERROR");
+                return;
+            }
+            strncpy(temp, array->rows[array->undoLastAction->actionInfo->line].data + array->undoLastAction->actionInfo->index, array->undoLastAction->actionInfo->amount);
+            temp[array->undoLastAction->actionInfo->amount] = '\0';
+
+            Delete(array, array->undoLastAction->actionInfo->line, array->undoLastAction->actionInfo->index, array->undoLastAction->actionInfo->amount);
+            Insert(array, array->undoLastAction->actionInfo->line, array->undoLastAction->actionInfo->index, array->undoLastAction->actionInfo->prevText);
+            
+            actionInfo = CreateActionInfo(array->undoLastAction->actionInfo->amount, array->undoLastAction->actionInfo->line, array->undoLastAction->actionInfo->index, temp);
+            HistoryPush(array, InsertWithReplacementAction, actionInfo, 0);
+            break;
+
+        case DeleteAction:
+        case CutAction:
+            Insert(array, array->undoLastAction->actionInfo->line, array->undoLastAction->actionInfo->index, array->undoLastAction->actionInfo->prevText);
+            
+            actionInfo = CreateActionInfo(array->undoLastAction->actionInfo->amount, array->undoLastAction->actionInfo->line, array->undoLastAction->actionInfo->index, array->undoLastAction->actionInfo->prevText);
+            HistoryPush(array, InsertAction, actionInfo, 0);
+            break;
     }
+    
+    HistoryPop(array, 1);
+    free(temp);
 }
 
 
-void Redo() {
+void Redo(struct Array* array) {
+    if (array->redoLastAction == NULL || array->redoLastAction->value == NoneAction) {
+        return;
+    }
+    struct ActionInfo* actionInfo = NULL;
+    switch(array->redoLastAction->value) {
+        case InsertAction:
+            Delete(array, array->redoLastAction->actionInfo->line, array->redoLastAction->actionInfo->index, array->redoLastAction->actionInfo->amount);
+            
+            actionInfo = CreateActionInfo(array->redoLastAction->actionInfo->amount, array->redoLastAction->actionInfo->line, array->redoLastAction->actionInfo->index, array->redoLastAction->actionInfo->prevText);
+            HistoryPush(array, DeleteAction, actionInfo, 1);
+            break;
+        case InsertWithReplacementAction:
+            Delete(array, array->redoLastAction->actionInfo->line, array->redoLastAction->actionInfo->index, array->redoLastAction->actionInfo->amount);
+            Insert(array, array->redoLastAction->actionInfo->line, array->redoLastAction->actionInfo->index, array->redoLastAction->actionInfo->prevText);
+            
+            actionInfo = CreateActionInfo(array->redoLastAction->actionInfo->amount, array->redoLastAction->actionInfo->line, array->redoLastAction->actionInfo->index, array->redoLastAction->actionInfo->prevText);
+            HistoryPush(array, InsertWithReplacementAction, actionInfo, 1);
+            break;
+        case DeleteAction:
+            Insert(array, array->redoLastAction->actionInfo->line, array->redoLastAction->actionInfo->index, array->redoLastAction->actionInfo->prevText);
+            
+            actionInfo = CreateActionInfo(array->redoLastAction->actionInfo->amount, array->redoLastAction->actionInfo->line, array->redoLastAction->actionInfo->index, array->redoLastAction->actionInfo->prevText);
+            HistoryPush(array, InsertAction, actionInfo, 1);
+            break;
+        case DeleteLineAction:
+            AddNewLine(array);
+            
+            actionInfo = CreateActionInfo(0, 0, 0, "");
+            HistoryPush(array, AddNewLineAction, actionInfo, 1);
+            break;
 
+    }
+    HistoryPop(array, 0);
+    
 }
 

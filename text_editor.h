@@ -12,6 +12,8 @@ enum Action {
     DeleteAction,
     PasteAction,
     CutAction,
+    DeleteLineAction,
+    DeleteAndInsertAction,
 };
 struct ActionInfo {
     int amount;
@@ -32,8 +34,8 @@ struct Array {
     int rowsCount;
     int currentRow;
     char* copied;
-    struct HistoryAction* lastAction;
-    int actionCount;
+    struct HistoryAction* undoLastAction;
+    struct HistoryAction* redoLastAction;
 };
 struct ActionInfo* CreateActionInfo(int amount, int line, int index, char* prevText);
 struct Row* CreateRows(int rowsCount);
@@ -53,8 +55,9 @@ bool Copy(struct Array* array, short line, short index, int symbols);
 bool Paste(struct Array* array, short line, short index);
 bool Cut(struct Array* array, short line, short index, int symbols);
 void ClearConsole();
-void HistoryPush(struct Array* array, enum Action action, struct ActionInfo* actionInfo);
-void HistoryPop(struct Array* array);
+void HistoryPush(struct Array* array, enum Action action, struct ActionInfo* actionInfo, bool isUndo);
+void HistoryPop(struct Array* array, bool isUndo);
 void Undo(struct Array* array);
+void Redo(struct Array* array);
 
 #endif
