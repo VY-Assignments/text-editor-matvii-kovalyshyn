@@ -12,7 +12,7 @@ int main() {
     
     while (1) {
         printf("\nSupported commands.");
-        printf("\n1. Append to end.\n2. New line.\n3. Save to file.\n4. Load from file.\n5. Print to console.\n6. Insert.\n7. Insert with replacement.\n8. Search.\n9. Delete.\n10. Copy.\n11.Paste.\n12. Cut.\n13. Undo.\n14. Redo.\n0. Exit.\n");
+        printf("\n1. Append to end.\n2. New line.\n3. Save to file.\n4. Load from file.\n5. Print to console.\n6. Insert.\n7. Insert with replacement.\n8. Search.\n9. Delete.\n10. Copy.\n11. Paste.\n12. Cut.\n13. Undo.\n14. Redo.\n0. Exit.\n");
 
         printf("\nChoose the command: ");
         scanf("%d", &command);
@@ -25,13 +25,15 @@ int main() {
             fgets(text, sizeof(text), stdin);
             text[strcspn(text, "\n")] = '\0';
             AddToEnd(textArray, text);
-            HistoryPush(textArray, AddToEndAction, strlen(text));
+            struct ActionInfo* actionInfo = CreateActionInfo(strlen(text), 0, 0, "");
+            HistoryPush(textArray, AddToEndAction, actionInfo);
         }
         else if (command == 2) {
             ClearConsole();
             AddNewLine(textArray);
             printf("New line is started.");
-            HistoryPush(textArray, AddNewLineAction, 0);
+            struct ActionInfo* actionInfo = CreateActionInfo(0, 0, 0, "");
+            HistoryPush(textArray, AddNewLineAction, actionInfo);
         }
         else if (command == 3) {
             ClearConsole();
@@ -44,8 +46,7 @@ int main() {
             else {
                 SaveToFile(textArray, file);
                 printf("Text has been saved successfully.");
-            }
-            
+            }            
         }
         else if (command == 4) {
             ClearConsole();
@@ -79,7 +80,9 @@ int main() {
                 text[strcspn(text, "\n")] = '\0';
                 if(!Insert(textArray, line, index, text)) {
                     printf("Invalid line or index.");
-                }    
+                }
+                struct ActionInfo* actionInfo = CreateActionInfo(strlen(text), line, index, "");
+                HistoryPush(textArray, InsertAction, actionInfo);    
             }
         }
         else if (command == 7) {
@@ -99,9 +102,16 @@ int main() {
                 text[strcspn(text, "\n")] = '\0';
                 if(!InsertWithReplacement(textArray, line, index, text)) {
                     printf("Invalid line or index.");
-                }    
+                }
+                char* temp = malloc(strlen(text) * sizeof(char));
+                if (temp == NULL) {
+                    printf("MEMORY ERROR");
+                }
+                strcpy(temp, textArray->rows[line].data + index);
+                temp[strlen(text) - 1] = '\0'; 
+                struct ActionInfo* actionInfo = CreateActionInfo(strlen(text), line, index, temp);    
+                HistoryPush(textArray, InsertWithReplacementAction, actionInfo);
             }
-
         }
         else if (command == 8) {
             ClearConsole();
