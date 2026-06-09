@@ -398,10 +398,21 @@ void Undo(struct Array* array) {
             break;
         case InsertWithReplacementAction:
             Delete(array, array->lastAction->actionInfo->line, array->lastAction->actionInfo->index, array->lastAction->actionInfo->amount);
-            Insert(array, array->lastAction->actionInfo->line, array->lastAction->actionInfo->index, array->lastAction->actionInfo->prevText);
+            InsertWithReplacement(array, array->lastAction->actionInfo->line, array->lastAction->actionInfo->index, array->lastAction->actionInfo->prevText);
             HistoryPop(array);
             break;
-        
+        case DeleteAction:
+            InsertWithReplacement(array, array->lastAction->actionInfo->line, array->lastAction->actionInfo->index, array->lastAction->actionInfo->prevText);
+            HistoryPop(array);
+            break;
+        case PasteAction:
+            Delete(array, array->lastAction->actionInfo->line, array->lastAction->actionInfo->index, array->lastAction->actionInfo->amount);
+            HistoryPop(array);
+            break;
+        case CutAction:
+            InsertWithReplacement(array, array->lastAction->actionInfo->line, array->lastAction->actionInfo->index, array->lastAction->actionInfo->prevText);
+            HistoryPop(array);
+            break;
         
     }
 }

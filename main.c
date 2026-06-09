@@ -100,14 +100,16 @@ int main() {
                 printf("Enter text to insert: ");
                 fgets(text, sizeof(text), stdin);
                 text[strcspn(text, "\n")] = '\0';
-                
-                char* temp = malloc(strlen(text) * sizeof(char));
+
+                char* temp = malloc((strlen(text) + 1) * sizeof(char));
                 if (temp == NULL) {
                     printf("MEMORY ERROR");
                 }
                 strcpy(temp, textArray->rows[line].data + index);
-                temp[strlen(text) - 1] = '\0'; 
-
+                if (temp[strlen(text) - 1] == '\n') {
+                    temp[strlen(text) - 1] = '\0';
+                }
+                
                 if(!InsertWithReplacement(textArray, line, index, text)) {
                     printf("Invalid line or index.");
                 }
@@ -155,9 +157,22 @@ int main() {
             }
             else {
                 while(getchar() != '\n');
+
+                char* temp = malloc((symbols + 1) * sizeof(char));
+                if (temp == NULL) {
+                    printf("MEMORY ERROR");
+                }
+                strcpy(temp, textArray->rows[line].data + index);
+                if (temp[strlen(temp) - 1] == '\n') {
+                    temp[strlen(temp) - 1] = '\0';
+                }
+
                 if (!Delete(textArray, line, index, symbols)) {
                     printf("Invalid line or index.");
                 }
+
+                struct ActionInfo* actionInfo = CreateActionInfo(symbols, line, index, temp);
+                HistoryPush(textArray, CutAction, actionInfo);
             }
 
         }
@@ -192,6 +207,8 @@ int main() {
                 if (!Paste(textArray, line, index)) {
                     printf("Invalid line or index.");
                 }
+                struct ActionInfo* actionInfo = CreateActionInfo(strlen(textArray->copied), line, index, "");
+                HistoryPush(textArray, InsertAction, actionInfo);
             }
         }
         else if (command == 12) {
@@ -206,9 +223,22 @@ int main() {
             }
             else {
                 while(getchar() != '\n');
+                
+                char* temp = malloc((symbols + 1) * sizeof(char));
+                if (temp == NULL) {
+                    printf("MEMORY ERROR");
+                }
+                strcpy(temp, textArray->rows[line].data + index);
+                if (temp[strlen(temp) - 1] == '\n') {
+                    temp[strlen(temp) - 1] = '\0';
+                }
+                
                 if (!Cut(textArray, line, index, symbols)) {
                     printf("Invalid line or index.");
                 }
+
+                struct ActionInfo* actionInfo = CreateActionInfo(symbols, line, index, temp);
+                HistoryPush(textArray, CutAction, actionInfo); 
             }
         }
         else if (command == 13) {

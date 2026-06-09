@@ -9,8 +9,9 @@ enum Action {
     AddNewLineAction,
     InsertAction,
     InsertWithReplacementAction,
-
-    
+    DeleteAction,
+    PasteAction,
+    CutAction,
 };
 struct ActionInfo {
     int amount;
@@ -50,8 +51,8 @@ void SaveToFile(struct Array* array, char* fileName);
 bool LoadFromFile(struct Array** array, char* fileName);
 bool Copy(struct Array* array, short line, short index, int symbols);
 bool Paste(struct Array* array, short line, short index);
-void ClearConsole();
 bool Cut(struct Array* array, short line, short index, int symbols);
+void ClearConsole();
 void HistoryPush(struct Array* array, enum Action action, struct ActionInfo* actionInfo);
 void HistoryPop(struct Array* array);
 void Undo(struct Array* array);
