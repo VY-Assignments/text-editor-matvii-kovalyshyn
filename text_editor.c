@@ -11,13 +11,19 @@ struct ActionInfo* CreateActionInfo(int amount, int line, int index, char* prevT
     actionInfo->line = line;
     actionInfo->index = index;
     
-    char* temp = malloc((strlen(prevText) + 1) * sizeof(char));
-    if (temp == NULL) {
-        printf("MEMORY ERROR");
-        return NULL;
+    if (prevText != NULL) {
+        char* temp = malloc((strlen(prevText) + 1) * sizeof(char));
+        if (temp == NULL) {
+            printf("MEMORY ERROR");
+            return NULL;
+        }
+        strcpy(temp, prevText);
+        actionInfo->prevText = temp;
     }
-    strcpy(temp, prevText);
-    actionInfo->prevText = temp;
+    else {
+        actionInfo->prevText = NULL;
+    }
+    
     return actionInfo;
 }
 
@@ -97,7 +103,7 @@ void AddNewLine(struct Array* array) {
 
 
 bool Insert(struct Array* array, short line, short index, char* text) {
-    if ((array->rows[line].data == NULL || strlen(array->rows[line].data) == 0) && line > array->currentRow)  {
+    if (array->rows[line].data == NULL)  {
         return 0;
     }
     if (index > strlen(array->rows[line].data)) {
@@ -123,7 +129,7 @@ bool Insert(struct Array* array, short line, short index, char* text) {
 
 
 bool InsertWithReplacement(struct Array* array, short line, short index, char* text) {
-    if (array->rows[line].data == NULL || strlen(array->rows[line].data) == 0)  {
+    if (array->rows[line].data == NULL)  {
         return 0;
     }
     if (index > strlen(array->rows[line].data)) {
@@ -231,7 +237,10 @@ void Print(struct Array* array) {
 }
 
 
-bool Delete(struct Array* array, short line, short index, int symbols) { // '\n' bug need to be fixed
+bool Delete(struct Array* array, short line, short index, int symbols) {
+    if (line > array->currentRow) {
+        return 0;
+    }
     if (array->rows[line].data == NULL || strlen(array->rows[line].data) == 0)  {
         return 0;
     }
@@ -499,4 +508,3 @@ void Redo(struct Array* array) {
     HistoryPop(array, 0);
     
 }
-
