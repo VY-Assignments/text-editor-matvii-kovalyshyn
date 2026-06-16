@@ -57,6 +57,7 @@ bool Cut(struct Array* array, short line, short index, int symbols);
 void ClearConsole();
 void HistoryPush(struct Array* array, enum Action action, struct ActionInfo* actionInfo, bool isUndo);
 void HistoryPop(struct Array* array, bool isUndo);
+void HistoryClear(struct Array* array, bool isUndo);
 void Undo(struct Array* array);
 void Redo(struct Array* array);
 

@@ -50,6 +50,7 @@ int main() {
             AddToEnd(textArray, text);
             struct ActionInfo* actionInfo = CreateActionInfo(strlen(text), line, index, "");
             HistoryPush(textArray, AddToEndAction, actionInfo, 1);
+            HistoryClear(textArray, 0);
         }
         else if (command == 2) {
             ClearConsole();
@@ -57,6 +58,7 @@ int main() {
             printf("New line is started.");
             struct ActionInfo* actionInfo = CreateActionInfo(0, 0, 0, "");
             HistoryPush(textArray, AddNewLineAction, actionInfo, 1);
+            HistoryClear(textArray, 0);
         }
         else if (command == 3) {
             ClearConsole();
@@ -111,6 +113,7 @@ int main() {
                         if(Insert(textArray, line, index, text)) {
                             struct ActionInfo* actionInfo = CreateActionInfo(strlen(text), line, index, "");
                             HistoryPush(textArray, InsertAction, actionInfo, 1);    
+                            HistoryClear(textArray, 0);
                             break;
                         }
                         else {
@@ -156,7 +159,8 @@ int main() {
                         
                         if(InsertWithReplacement(textArray, line, index, text)) {
                             struct ActionInfo* actionInfo = CreateActionInfo(strlen(text), line, index, temp);    
-                            HistoryPush(textArray, InsertWithReplacementAction, actionInfo, 1);    
+                            HistoryPush(textArray, InsertWithReplacementAction, actionInfo, 1); 
+                            HistoryClear(textArray, 0);   
                             break;
                         }
                         else {
@@ -226,6 +230,7 @@ int main() {
                 if (Delete(textArray, line, index, symbols)) {
                     struct ActionInfo* actionInfo = CreateActionInfo(symbols, line, index, temp);
                     HistoryPush(textArray, DeleteAction, actionInfo, 1);
+                    HistoryClear(textArray, 0);
                 }
                 else {
                     printf("Invalid line or index.");
@@ -266,6 +271,7 @@ int main() {
                 if (Paste(textArray, line, index)) {
                     struct ActionInfo* actionInfo = CreateActionInfo(strlen(textArray->copied), line, index, "");
                     HistoryPush(textArray, InsertAction, actionInfo, 1);
+                    HistoryClear(textArray, 0);
                 }
                 else {
                     printf("Invalid line or index.");
@@ -301,7 +307,8 @@ int main() {
                 
                 if (Cut(textArray, line, index, symbols)) {
                     struct ActionInfo* actionInfo = CreateActionInfo(symbols, line, index, temp);
-                    HistoryPush(textArray, CutAction, actionInfo, 1);    
+                    HistoryPush(textArray, CutAction, actionInfo, 1);
+                    HistoryClear(textArray, 0);    
                 }
                 else {
                     printf("Invalid line or index.");

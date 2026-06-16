@@ -381,24 +381,47 @@ void HistoryPush(struct Array* array, enum Action action, struct ActionInfo* act
 
 void HistoryPop(struct Array* array, bool isUndo) {
     if (isUndo) {
-        if (array->undoLastAction == NoneAction || array->undoLastAction == NULL) {
+        if (array->undoLastAction == NoneAction && array->undoLastAction == NULL) {
             return;
         }
         struct HistoryAction* last = array->undoLastAction;
         array->undoLastAction = array->undoLastAction->next;
-        free(last->actionInfo->prevText);
+        if (last->actionInfo != NULL) {
+            free(last->actionInfo);
+            free(last->actionInfo->prevText);
+        }
         free(last);
     }
     else {
-        if (array->redoLastAction == NoneAction || array->undoLastAction == NULL) {
+        if (array->redoLastAction == NoneAction && array->redoLastAction == NULL) {
             return;
         }
         struct HistoryAction* last = array->redoLastAction;
         array->redoLastAction = array->redoLastAction->next;
-        free(last->actionInfo->prevText);
+        if (last->actionInfo != NULL) {
+            free(last->actionInfo);
+            free(last->actionInfo->prevText);
+        }
         free(last);
     }
     
+}
+
+
+void HistoryClear(struct Array* array, bool isUndo) {
+    printf("text\n");
+    if (isUndo) {
+        while(array->undoLastAction != NoneAction || array->undoLastAction != NULL) {
+           HistoryPop(array, isUndo);
+        }
+    }
+    else {
+        while(array->redoLastAction != NoneAction || array->redoLastAction != NULL) {
+            printf("text2\n");
+            HistoryPop(array, isUndo);
+            printf("text3\n");
+        }
+    }
 }
 
 
