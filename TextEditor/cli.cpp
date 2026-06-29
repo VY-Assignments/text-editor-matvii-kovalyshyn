@@ -18,23 +18,36 @@ int main() {
     while (1) {
         ClearConsole();
         std::println("\nSupported commands.");
-        std::println("\n1. Append to end.\n2. New line.\n3. Save to file.\n4. Load from file.\n5. Print to console.\n6. Insert.\n7. Insert with replacement.\n8. Search.\n9. Delete.\n10. Copy.\n11. Paste.\n12. Cut.\n13. Undo.\n14. Redo.\n0. Exit.\n");
+        std::println("\n1. Append to end.\n2. New line.\n3. Save to file.\n4. Load from file.\n5. Print to console.\n6. Insert.\n7. Insert with replacement.\n8. Change checklist.\n9. Change contact.\n10. Search.\n11. Delete.\n12. Copy.\n13. Paste.\n14. Cut.\n15. Undo.\n16. Redo.\n0. Exit.\n");
 
         std::print("\nChoose the command: ");
-        std::cin >> command;
+        if(!(std::cin >> command)) {
+            std::println("Unknown command. Try again.");
+            std::cin.clear();
+            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+            continue;
+        }
+        
 
         if (command == 1) {
-            std::string text;
-            std::print("Enter text to append: ");
-            std::cin >> text;
-            
             int line = textEditor->GetCurrentLine();
-            int index = 0;
+            if (line < 0) {
+                std::println("Create a new line first.");
+            }
+            else {
+                std::string text;
+                std::print("Enter text to append: ");
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                std::getline(std::cin, text);
 
-            textEditor->AddToEnd(text);
+                int index = 0;
+
+                textEditor->AddToEnd(text);
+                
+                Action action(AddToEndAction, text.size(), line, index, "", text);
+                textEditor->HistoryPush(action);
+            }
             
-            Action action(AddToEndAction, text.size(), line, index, "");
-            textEditor->HistoryPush(action);
         }
 
         else if (command == 2) {
@@ -42,41 +55,55 @@ int main() {
             short lineType = 0;
             std::print("Choose line type: text (1), checklist(2), contact information (3): ");
             std::cin >> lineType;
+            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+            std::string lineText1 = "";
+            std::string lineText2 = "";
             if (lineType == 1) {
                 Line* line = new TextLine("");
                 textEditor->AddLine(line);
+
+                std::println("New line is started.");
             }
             else if (lineType == 2) {
                 std::string item;
                 std::print("Insert your item: ");
-                std::cin >> item;
+                
+                std::getline(std::cin, item);
 
                 Line* line = new CheckListLine(item, 0);
                 textEditor->AddLine(line);
+
+                lineText1 = item;
+
+                std::println("New line is started.");
             }
             else if (lineType == 3) {
                 std::string name;
                 std::print("Insert contact name and surname: ");
-                std::cin >> name;
+                std::getline(std::cin, name);
 
                 std::string email;
                 std::print("Insert contact email: ");
-                std::cin >> email;
+                std::getline(std::cin, email);
                 
                 Line* line = new ContactInfoLine(name, email);
                 textEditor->AddLine(line);
+
+                lineText1 = name;
+                lineText2 = email;
+                
+                std::println("New line is started.");
             }
             
-            std::println("New line is started.");
-            
-            Action action(AddNewLineAction, 0, 0, 0, "");
+            Action action(AddNewLineAction, lineType, 0, 0, lineText1, lineText2);
             textEditor->HistoryPush(action);
         }
         else if (command == 3) {
             ClearConsole();
             std::print("Enter the file name for saving: ");
             std::string file;
-            std::cin >> file;
+            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+            std::getline(std::cin, file);
             if (file.size() == 0 || file[0] == '\n') {
                 std::println("Incorrect file name.");
             }
@@ -89,23 +116,24 @@ int main() {
             ClearConsole();
             std::print("Enter the file name for loading: ");
             std::string file;
-            std::cin >> file;
+            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+            std::getline(std::cin, file);
             if (textEditor->LoadFromFile(file)) {
                 std::println("Text has been loaded successfully.");
             }
         }
         else if (command == 5) {
             ClearConsole();
-            std::println("\nText:");
+            std::println("\n-----------------------");
             textEditor->PrintAll();
-            std::println();
+            std::println("\n-----------------------");
         }
         else if (command == 6) {
             ClearConsole();
             std::print("Choose line and index: ");
             short line;
             short index;
-            std::string text;
+            
             if (!(std::cin >> line >> index)) {
                 std::println("Invalid input.");
                 std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
@@ -113,28 +141,29 @@ int main() {
             else {
                 std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
                 
-                std::print("Enter text to insert: ");
-                std::cin >> text;
-
-                if(textEditor->Insert(line, index, text)) {
-                    Action action(InsertAction, text.size(), line, index, "");
-                    textEditor->HistoryPush(action);
-                    break;
+                if (textEditor->GetLineType(line) == "TextLine") {
+                    std::string text;
+                    std::print("Enter text to insert: ");
+                    std::getline(std::cin, text);
+                    if(textEditor->Insert(line, index, text)) {
+                        Action action(InsertAction, text.size(), line, index, "", text);
+                        textEditor->HistoryPush(action);
+                    }
+                    else {
+                        std::println("Invalid line or index.");
+                    }
                 }
                 else {
-                    std::println("Invalid line or index.");
-                    break;
-                }
-                       
+                    std::println("This type of line does not support insert command.");
+                }   
             }
-            
         }
         else if (command == 7) {
             ClearConsole();
-            std::println("Choose line and index: ");
+            std::print("Choose line and index: ");
             short line;
             short index;
-            std::string text;
+            
             if (!(std::cin >> line >> index)) {
                 std::println("Invalid input.");
                 std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
@@ -142,28 +171,101 @@ int main() {
             else {
                 std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
                 
-                std::print("Enter text to insert: ");
-                std::cin >> text;
+                if (textEditor->GetLineType(line) == "TextLine") {
+                    std::string text;
+                    std::print("Enter text to insert: ");
+                    std::getline(std::cin, text);
 
-                std::string temp = textEditor->GetLine(line).substr(index);
-                
-                if(textEditor->InsertWithReplacement(line, index, text)) {
-                    Action action(InsertWithReplacementAction, text.size(), line, index, temp);
-                    textEditor->HistoryPush(action);
-                    break;
-                }
-                else {
-                    std::println("Invalid line or index.");
-                    break;
+                    std::string temp = textEditor->GetLineStr(line).substr(index);
+                    
+                    if(textEditor->InsertWithReplacement(line, index, text)) {
+                        Action action(InsertWithReplacementAction, text.size(), line, index, temp, text);
+                        textEditor->HistoryPush(action);
+                    }
+                    else {
+                        std::println("Invalid line or index.");
+                    }
                 }
             }
         }
         else if (command == 8) {
             ClearConsole();
+            std::print("Choose checklist line: ");
+            short line;
+            if (!(std::cin >> line) || line > textEditor->GetCurrentLine()) {
+                std::println("Invalid input.");
+            }
+            else {
+                if (textEditor->GetLineType(line) != "CheckListLine") {
+                    std::println("Choosen line is not a CheckList Line.");
+                }
+                else {
+                    std::print("Mark/unmark (1) or change item (2): ");
+                    short choice;
+                    if (!(std::cin >> choice)) {
+                        std::println("Invalid input.");
+                        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    }
+                    else {
+                        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                        CheckListLine* checkListLine = dynamic_cast<CheckListLine*>(textEditor->GetLine(line));
+                        if (choice == 1) {
+                            checkListLine->ChangeChecked();
+                        }
+                        else if (choice == 2) {
+                            std::string text;
+                            
+                            std::print("Enter new item: ");
+                            std::getline(std::cin, text);
+                            checkListLine->SetItem(text);
+                        }   
+                    }
+                }
+            }
+        }
+        else if (command == 9) {
+            ClearConsole();
+            std::print("Choose contact line: ");
+            short line;
+            if (!(std::cin >> line) || line > textEditor->GetCurrentLine()) {
+                std::println("Invalid input.");
+            }
+            else {
+                if (textEditor->GetLineType(line) != "ContactInfoLine") {
+                    std::println("Choosen line is not a Contact Line.");
+                }
+                else {
+                    std::print("To change: name(1), email(2): ");
+                    short choice;
+                    if (!(std::cin >> choice)) {
+                        std::println("Invalid input.");
+                        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    }
+                    else {
+                        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                        std::string text;
+                        ContactInfoLine* contactInfoLine = dynamic_cast<ContactInfoLine*>(textEditor->GetLine(line));
+                        if (choice == 1) {
+                            std::print("Enter new name: ");
+                            std::getline(std::cin, text);
+                            contactInfoLine->SetName(text);
+                        }
+                        else if (choice == 2) {
+                            std::print("Enter new email: ");
+                            std::getline(std::cin, text);
+                            contactInfoLine->SetEmail(text);
+                        }
+                    }
+                }
+            }
+        }
+        else if (command == 10) {
+            ClearConsole();
             
             std::string text;
             std::print("Enter text to search: ");
-            std::cin >> text;
+            std::cin.ignore();
+            std::getline(std::cin, text);
             
             std::vector<int> indexes = textEditor->Search(text);
             
@@ -178,7 +280,7 @@ int main() {
                 }
             }
         }
-        else if (command == 9) {
+        else if (command == 11) {
             ClearConsole();
             std::print("Choose line, index and number of symbols: ");
             short line;
@@ -191,47 +293,10 @@ int main() {
             else {
                 std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
                 
-                std::string temp = textEditor->GetLine(line).substr(index, symbols);
+                std::string temp = textEditor->GetLineStr(line).substr(index, symbols);
 
                 if (textEditor->Delete(line, index, symbols)) {
-                    Action action(DeleteAction, symbols, line, index, temp);
-                    textEditor->HistoryPush(action);
-                }
-                else {
-                    std::println("Invalid line or index.");
-                }
-            }
-        }
-        else if (command == 10) {
-            ClearConsole();
-            std::print("Choose line, index and number of symbols: ");
-            short line;
-            short index;
-            int symbols;
-            if (!(std::cin >> line >> index >> symbols)) {
-                std::println("Invalid input.");
-                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-            }
-            else {
-                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                if (!textEditor->Copy(line, index, symbols)) {
-                    std::println("Invalid line or index.");
-                }
-            }
-        }
-        else if (command == 11) {
-            ClearConsole();
-            std::print("Choose line, index: ");
-            short line;
-            short index;
-            if (!(std::cin >> line >> index)) {
-                std::println("Invalid input.");
-                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-            }
-            else {
-                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                if (textEditor->Paste(line, index)) {
-                    Action action(InsertAction, textEditor->GetCopied().size(), line, index, "");
+                    Action action(DeleteAction, symbols, line, index, temp, "");
                     textEditor->HistoryPush(action);
                 }
                 else {
@@ -251,11 +316,48 @@ int main() {
             }
             else {
                 std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                if (!textEditor->Copy(line, index, symbols)) {
+                    std::println("Invalid line or index.");
+                }
+            }
+        }
+        else if (command == 13) {
+            ClearConsole();
+            std::print("Choose line, index: ");
+            short line;
+            short index;
+            if (!(std::cin >> line >> index)) {
+                std::println("Invalid input.");
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+            }
+            else {
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                if (textEditor->Paste(line, index)) {
+                    Action action(InsertAction, textEditor->GetCopied().size(), line, index, "", textEditor->GetCopied());
+                    textEditor->HistoryPush(action);
+                }
+                else {
+                    std::println("Invalid line or index.");
+                }
+            }
+        }
+        else if (command == 14) {
+            ClearConsole();
+            std::print("Choose line, index and number of symbols: ");
+            short line;
+            short index;
+            int symbols;
+            if (!(std::cin >> line >> index >> symbols)) {
+                std::println("Invalid input.");
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+            }
+            else {
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
                 
-                std::string temp = textEditor->GetLine(line).substr(index);
+                std::string temp = textEditor->GetLineStr(line).substr(index);
                 
                 if (textEditor->Cut(line, index, symbols)) {
-                    Action action(CutAction, symbols, line, index, temp);
+                    Action action(CutAction, symbols, line, index, temp, textEditor->GetCopied());
                     textEditor->HistoryPush(action);                    
                 }
                 else {
@@ -263,11 +365,11 @@ int main() {
                 }
             }
         }
-        else if (command == 13) {
+        else if (command == 15) {
             ClearConsole();
             textEditor->Undo();
         }
-        else if (command == 14) {
+        else if (command == 16) {
             ClearConsole();
             textEditor->Redo();
         }
@@ -280,7 +382,5 @@ int main() {
             printf("Unknown command");
         }
     }
-
-
     return 0;
 }

@@ -16,14 +16,14 @@ enum ActionType {
 };
 
 class Action {
-private:
+public:
     ActionType actionType;
     int amount;
     int line;
     int index;
     std::string prevText;
-public:
-    Action(ActionType actionType, int amount, int line, int index, std::string prevText);
+    std::string newText;
+    Action(ActionType actionType, int amount, int line, int index, std::string prevText, std::string newText);
 };
 
 class HistoryNode {
@@ -38,8 +38,8 @@ public:
 class Line {
 public:
     virtual void Print() const = 0;
-    virtual std::string ToStr() const;
-    virtual ~Line() {}
+    virtual std::string ToStr() const = 0;
+    virtual ~Line() = default;
 };
 
 class TextLine : public Line {
@@ -58,6 +58,9 @@ private:
     bool checked;
 public:
     CheckListLine(const std::string& item, bool checked);
+    std::string GetItem() const;
+    void SetItem(std::string item);
+    void ChangeChecked();
     void Print() const override;
     std::string ToStr() const override;
 };
@@ -68,6 +71,8 @@ private:
     std::string email;
 public:
     ContactInfoLine(const std::string& name, const std::string& email);
+    void SetName(std::string name);
+    void SetEmail(std::string email);
     void Print() const override;
     std::string ToStr() const override;
 };
@@ -77,11 +82,14 @@ class TextEditor {
 private:
     std::vector<Line*> lines;
     std::string copied = ""; 
-    int currentRow = 0;
+    int currentRow = -1;
     HistoryNode* currentAction = nullptr;
+    HistoryNode* head = nullptr;
 public:
-    int GetCurrentLine() const;    
-    std::string GetLine(int line) const;
+    int GetCurrentLine() const;
+    Line* GetLine(int line);    
+    std::string GetLineStr(int line) const;
+    std::string GetLineType(int line) const;
     std::string GetCopied() const;
     void AddLine(Line* line);
     void AddToEnd(const std::string& text);

@@ -456,7 +456,7 @@ void Undo(struct Array* array) {
             }
             array->currentRow--;
             array->rows[array->rowsCount].data = NULL;
-            Delete(array, array->currentRow ,strlen(array->rows[array->currentRow].data) - 1, 1);
+            Delete(array, array->currentRow, strlen(array->rows[array->currentRow].data) - 1, 1);
             
             actionInfo = CreateActionInfo(1, array->currentRow, 0, "");
             HistoryPush(array, DeleteLineAction, actionInfo, 0);

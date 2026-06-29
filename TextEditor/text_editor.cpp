@@ -5,12 +5,13 @@
 #include "text_editor.hpp"
 
 
-Action::Action(ActionType actionType, int amount, int line, int index, std::string prevText) {
+Action::Action(ActionType actionType, int amount, int line, int index, std::string prevText, std::string newText) {
     this->actionType = actionType;
     this->amount = amount;
     this->line = line;
     this->index = index;
     this->prevText = prevText;
+    this->newText = newText;
 }
 
 HistoryNode::HistoryNode(const Action& action) : action(action) {}
@@ -38,6 +39,23 @@ CheckListLine::CheckListLine(const std::string& item, bool checked) {
     this->checked = checked;
 }
 
+std::string CheckListLine::GetItem() const {
+    return item;
+} 
+
+void CheckListLine::SetItem(std::string item) {
+    this->item = item;
+}
+
+void CheckListLine::ChangeChecked() {
+    if (checked == 0) {
+        checked = 1;
+    }
+    else {
+        checked = 0;
+    }
+}
+
 void CheckListLine::Print() const {
     std::println("[{}] {}", (checked ? "x" : " "), item);
 }
@@ -49,6 +67,14 @@ std::string CheckListLine::ToStr() const {
 
 ContactInfoLine::ContactInfoLine(const std::string& name, const std::string& email) {
     this->name = name;
+    this->email = email;
+}
+
+void ContactInfoLine::SetName(std::string name) {
+    this->name = name;
+}
+    
+void ContactInfoLine::SetEmail(std::string email) {
     this->email = email;
 }
 
@@ -66,8 +92,25 @@ int TextEditor::GetCurrentLine() const {
     return currentRow;
 }
 
-std::string TextEditor::GetLine(int line) const {
+Line* TextEditor::GetLine(int line) {
+    return lines[line];
+}
+
+std::string TextEditor::GetLineStr(int line) const {
     return lines[line]->ToStr();
+}
+
+std::string TextEditor::GetLineType(int line) const {
+    if (TextLine* l = dynamic_cast<TextLine*>(lines[line])) {
+        return "TextLine";
+    }
+    else if (CheckListLine* l = dynamic_cast<CheckListLine*>(lines[line])) {
+        return "CheckListLine";
+    }
+    else if (ContactInfoLine* l = dynamic_cast<ContactInfoLine*>(lines[line])) {
+        return "ContactInfoLine";
+    }
+    return "None";
 }
 
 std::string TextEditor::GetCopied() const {
@@ -76,6 +119,7 @@ std::string TextEditor::GetCopied() const {
 
 void TextEditor::AddLine(Line* line) {
     lines.push_back(line);
+    currentRow++;
 }
 
 void TextEditor::AddToEnd(const std::string& text) {
@@ -91,7 +135,7 @@ void TextEditor::AddToEnd(const std::string& text) {
 
 bool TextEditor::Insert(int line, int index, const std::string& text) {
     if (TextLine* textLine = dynamic_cast<TextLine*>(lines[line])) {
-        std::string newText = lines[line]->ToStr();
+        std::string newText = textLine->ToStr();
         if (index <= newText.size()) {
             newText.insert(index, text);
             textLine->SetText(newText);
@@ -122,12 +166,21 @@ std::vector<int> TextEditor::Search(const std::string text) const {
             indexes.push_back(foundIndex);
         }
     }
+    return indexes;
 }
 
 bool TextEditor::Delete(int line, int index, int symbols) {
-    if (TextLine* textLine = dynamic_cast<TextLine*>(lines[line])) {
-        textLine->ToStr().erase(index, symbols);
+    if (line < lines.size()) {
+        if (TextLine* textLine = dynamic_cast<TextLine*>(lines[line])) {
+            std::string currentText = textLine->ToStr();
+            if (index >= 0 && index < currentText.size()) {
+                currentText.erase(index, symbols);
+                textLine->SetText(currentText);
+                return 1;
+            }    
+        }
     }
+    return 0;
 }
 
 bool TextEditor::Copy(int line, int index, int symbols) {
@@ -150,14 +203,6 @@ void TextEditor::PrintAll() const {
     for (size_t i = 0; i < lines.size(); i++) {
         lines[i]->Print();
     }
-}
-
-void TextEditor::Undo() {
-
-}
-
-void TextEditor::Redo() {
-
 }
 
 bool TextEditor::SaveToFile(std::string filename) const {
@@ -195,6 +240,9 @@ bool TextEditor::LoadFromFile(std::string filename) { // TO COMPLETE
 
 void TextEditor::HistoryPush(Action& action) {
     HistoryNode* newNode = new HistoryNode(action);
+    if (head == nullptr) {
+        head = newNode;
+    }
 
     if (currentAction != nullptr) {
         HistoryNode* clearNode = currentAction->next;
@@ -212,7 +260,7 @@ void TextEditor::HistoryPush(Action& action) {
 
 Action TextEditor::HistoryPop() {
     if (currentAction == nullptr) {
-        return Action(NoneAction, 0, 0, 0, "");
+        return Action(NoneAction, 0, 0, 0, "", "");
     }
 
     Action poppedAction = currentAction->action;
@@ -232,12 +280,107 @@ void TextEditor::Undo() {
     if (currentAction == nullptr) {
         return;
     }
+    
+    switch(currentAction->action.actionType) {
+        case AddToEndAction:
+        case InsertAction:
+        case PasteAction:
+            Delete(currentAction->action.line, currentAction->action.index, currentAction->action.amount);
+            break;
+        
+        case AddNewLineAction: {
+            short lineType = currentAction->action.amount;
+            if (lineType == 1) { // TextLine
+                if (!lines.empty() && currentRow >= 0 && currentRow < lines.size()) {
+                    delete lines[currentRow];
+                    lines.erase(lines.begin() + currentRow);
+                }
 
+                currentRow = lines.size() - 1;
+
+            }
+            else if (lineType == 2 || lineType == 3) { // CheckListLine and ContactInfoLine
+                if (!lines.empty() && currentRow >= 0 && currentRow < lines.size()) {
+                    delete lines[currentRow];
+                    lines.erase(lines.begin() + currentRow);
+                }
+
+                currentRow = lines.size() - 1;
+                if (currentRow < 0) {
+                    currentRow = 0;
+                }
+            }
+            
+            break;
+        }
+
+        case InsertWithReplacementAction:
+            Delete(currentAction->action.line, currentAction->action.index, currentAction->action.newText.size());
+            Insert(currentAction->action.line, currentAction->action.index, currentAction->action.prevText);
+            break;
+
+        case DeleteAction:
+        case CutAction:
+            Insert(currentAction->action.line, currentAction->action.index, currentAction->action.prevText);
+            break;
+    }
+    currentAction = currentAction->prev;
 }
 
 void TextEditor::Redo() {
+    HistoryNode* nextNode = nullptr;
+    if (currentAction == nullptr) {
+        nextNode = head;
+    }
+    else {
+        nextNode = currentAction->next;
+    }
 
+    if (nextNode == nullptr) {
+        return;
+    }
+
+    switch(nextNode->action.actionType) {
+        case AddToEndAction:
+        case InsertAction:
+        case PasteAction:
+            Insert(nextNode->action.line, nextNode->action.index, nextNode->action.newText);
+            break;
+
+        case AddNewLineAction: {
+            Line* line = nullptr;
+            short lineType = nextNode->action.amount;
+            if (lineType == 1) { // TextLine
+                line = new TextLine("");
+            }    
+            else if (lineType == 2) { // CheckListLine
+                std::string item = nextNode->action.prevText;
+                line = new CheckListLine(item, 0); 
+            }
+            else if (lineType == 3) { // ContactInfoLine
+                std::string name = nextNode->action.prevText;
+                std::string email = nextNode->action.newText;
+                line = new ContactInfoLine(name, email);
+            }
+            if (line != nullptr) {
+                AddLine(line);
+                currentRow = lines.size() - 1;
+            }
+            break;
+        }
+        case InsertWithReplacementAction:
+            Delete(nextNode->action.line, nextNode->action.index, nextNode->action.prevText.size());
+            Insert(nextNode->action.line, nextNode->action.index, nextNode->action.newText);
+            break;
+
+        case DeleteAction:
+        case CutAction:
+            Delete(nextNode->action.line, nextNode->action.index, nextNode->action.amount);
+            break;
+    }
+    currentAction = nextNode;
 }
+
 
 TextEditor::~TextEditor() {
     for (size_t i = 0; i < lines.size(); i++) {
