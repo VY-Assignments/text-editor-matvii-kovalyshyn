@@ -35,6 +35,11 @@ int main() {
         return 1;
     }
 
+    // printf("[DEBUG] Dynamic Library Loading Success!\n");
+    // printf("  -> libcipher.so handle address: %p\n", handle);
+    // printf("  -> cipher_create_caesar fn pointer: %p\n", (void*)cipher_create_caesar);
+    // printf("  -> cipher_encrypt fn pointer: %p\n", (void*)cipher_encrypt);
+
     while(true) {
         short userCipher;
         printf("\nChoose a cipher: caesar(1) or vigenere(2). Exit(0).\n");

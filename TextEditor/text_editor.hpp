@@ -71,6 +71,8 @@ private:
     std::string email;
 public:
     ContactInfoLine(const std::string& name, const std::string& email);
+    std::string GetName() const;
+    std::string GetEmail() const;
     void SetName(std::string name);
     void SetEmail(std::string email);
     void Print() const override;

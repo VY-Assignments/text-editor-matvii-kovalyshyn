@@ -3,6 +3,20 @@
 #include <limits>
 #include <vector>
 #include "text_editor.hpp"
+#include <dlfcn.h>
+#include "../Encryption/cipher_api.h"
+
+typedef void* cipher_t;
+typedef cipher_t* (*create_caesar_fn)(int);
+typedef cipher_t* (*create_vigenere_fn)(const char*);
+typedef char* (*encrypt_fn)(cipher_t*, const char*);
+typedef char* (*decrypt_fn)(cipher_t*, const char*);
+typedef void (*destroy_fn)(cipher_t*);
+typedef void (*free_fn)(char*);
+
+
+
+
 
 void ClearConsole() {
     // \e[1J — очищає екран від курсора вгору
@@ -12,13 +26,34 @@ void ClearConsole() {
 
 int main() {
 
+    void* handle = dlopen("Encryption/libcipher.so", RTLD_LAZY);
+    if (!handle) {
+        std::cerr << "Error library loading: " << dlerror() << std::endl;
+        return 1;
+    }
+
+    auto cipher_create_caesar = (create_caesar_fn)dlsym(handle, "cipher_create_caesar");
+    auto cipher_create_vigenere = (create_vigenere_fn)dlsym(handle, "cipher_create_vigenere");
+    auto cipher_encrypt = (encrypt_fn)dlsym(handle, "cipher_encrypt");
+    auto cipher_decrypt = (decrypt_fn)dlsym(handle, "cipher_decrypt");
+    auto cipher_destroy = (destroy_fn)dlsym(handle, "cipher_destroy");
+    auto cipher_free = (free_fn)dlsym(handle, "cipher_free");
+
+    if (!cipher_create_caesar || !cipher_create_vigenere || !cipher_encrypt || 
+        !cipher_decrypt || !cipher_destroy || !cipher_free) {
+        std::cerr << "Functions are not found." << std::endl;
+        dlclose(handle);
+        return 1;
+    }
+
+
     short command = 0;
     TextEditor* textEditor = new TextEditor();
 
     while (1) {
         ClearConsole();
         std::println("\nSupported commands.");
-        std::println("\n1. Append to end.\n2. New line.\n3. Save to file.\n4. Load from file.\n5. Print to console.\n6. Insert.\n7. Insert with replacement.\n8. Change checklist.\n9. Change contact.\n10. Search.\n11. Delete.\n12. Copy.\n13. Paste.\n14. Cut.\n15. Undo.\n16. Redo.\n0. Exit.\n");
+        std::println("\n1. Append to end.\n2. New line.\n3. Save to file.\n4. Load from file.\n5. Print to console.\n6. Insert.\n7. Insert with replacement.\n8. Change checklist.\n9. Change contact.\n10. Search.\n11. Delete.\n12. Copy.\n13. Paste.\n14. Cut.\n15. Undo.\n16. Redo.\n17. Cipher menu.\n0. Exit.\n");
 
         std::print("\nChoose the command: ");
         if(!(std::cin >> command)) {
@@ -264,7 +299,7 @@ int main() {
             
             std::string text;
             std::print("Enter text to search: ");
-            std::cin.ignore();
+            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
             std::getline(std::cin, text);
             
             std::vector<int> indexes = textEditor->Search(text);
@@ -372,6 +407,196 @@ int main() {
         else if (command == 16) {
             ClearConsole();
             textEditor->Redo();
+        }
+        else if (command == 17) {
+            while (1) {
+                std::println("\nCipher menu.\n1. Encrypt the whole text.\n2. Decrypt the whole text.\n3. Save text.\n4. Load text.\n5. Print text.\n0. Exit");
+                std::print("\nChoose the command: ");
+                short cipherCommand = 0;
+                if(!(std::cin >> cipherCommand)) {
+                    std::println("Unknown command. Try again.");
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    continue;
+                }
+
+                if (cipherCommand == 1) {
+                    ClearConsole();
+                    int userCipher = 0;
+                    std::print("\nChoose a cipher: caeser(1) or vigenere(2): ");
+                    if(!(std::cin >> userCipher)) {
+                        std::println("Invalid input.");
+                        std::cin.clear();
+                        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                        continue;
+                    }
+                    
+                    if (userCipher == 1) {
+                        int key = 0;
+                        std::print("\nEnter a cipher key: ");
+                        if(!(std::cin >> key)) {
+                            std::println("Invalid input.");
+                            std::cin.clear();
+                            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                            continue;
+                        }
+                        cipher_t* caesar = cipher_create_caesar(key);
+                        
+                        for (size_t i = 0; i < textEditor->GetCurrentLine(); i++) {
+                            Line* line = textEditor->GetLine(i);
+                            if (TextLine* textLine = dynamic_cast<TextLine*>(line)) {
+                                std::string encrypted_text(cipher_encrypt(caesar, textLine->ToStr().c_str()));
+                                textLine->SetText(encrypted_text);
+                            }
+                            else if (CheckListLine* checkListLine = dynamic_cast<CheckListLine*>(line)) {
+                                std::string encrypted_item(cipher_encrypt(caesar, checkListLine->GetItem().c_str()));
+                                checkListLine->SetItem(encrypted_item);
+                            }
+                            else if (ContactInfoLine* contactInfoLine = dynamic_cast<ContactInfoLine*>(line)) {
+                                std::string encrypted_name(cipher_encrypt(caesar, contactInfoLine->GetName().c_str()));
+                                std::string encrypted_email(cipher_encrypt(caesar, contactInfoLine->GetEmail().c_str()));
+                                contactInfoLine->SetName(encrypted_name);
+                                contactInfoLine->SetEmail(encrypted_email);
+                            }
+                            
+                        }
+                    }
+                    else if (userCipher == 2) {
+                        std::string key = "a";
+                        std::print("\nEnter a cipher key: ");
+                        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                        std::getline(std::cin, key);
+                        
+                        cipher_t* vigenere = cipher_create_vigenere(key.c_str());
+                        
+                        for (size_t i = 0; i < textEditor->GetCurrentLine(); i++) {
+                            Line* line = textEditor->GetLine(i);
+                            if (TextLine* textLine = dynamic_cast<TextLine*>(line)) {
+                                std::string encrypted_text(cipher_encrypt(vigenere, textLine->ToStr().c_str()));
+                                textLine->SetText(encrypted_text);
+                            }
+                            else if (CheckListLine* checkListLine = dynamic_cast<CheckListLine*>(line)) {
+                                std::string encrypted_item(cipher_encrypt(vigenere, checkListLine->GetItem().c_str()));
+                                checkListLine->SetItem(encrypted_item);
+                            }
+                            else if (ContactInfoLine* contactInfoLine = dynamic_cast<ContactInfoLine*>(line)) {
+                                std::string encrypted_name(cipher_encrypt(vigenere, contactInfoLine->GetName().c_str()));
+                                std::string encrypted_email(cipher_encrypt(vigenere, contactInfoLine->GetEmail().c_str()));
+                                contactInfoLine->SetName(encrypted_name);
+                                contactInfoLine->SetEmail(encrypted_email);
+                            }
+                            
+                        }
+                    }
+                    
+                    
+                }
+                else if (cipherCommand == 2) {
+                    ClearConsole();
+                    ClearConsole();
+                    int userCipher = 0;
+                    std::print("\nChoose a cipher: caeser(1) or vigenere(2): ");
+                    if(!(std::cin >> userCipher)) {
+                        std::println("Invalid input.");
+                        std::cin.clear();
+                        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                        continue;
+                    }
+                    
+                    if (userCipher == 1) {
+                        int key = 0;
+                        std::print("\nEnter a cipher key: ");
+                        if(!(std::cin >> key)) {
+                            std::println("Invalid input.");
+                            std::cin.clear();
+                            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                            continue;
+                        }
+                        cipher_t* caesar = cipher_create_caesar(key);
+                        
+                        for (size_t i = 0; i < textEditor->GetCurrentLine(); i++) {
+                            Line* line = textEditor->GetLine(i);
+                            if (TextLine* textLine = dynamic_cast<TextLine*>(line)) {
+                                std::string decrypted_text(cipher_decrypt(caesar, textLine->ToStr().c_str()));
+                                textLine->SetText(decrypted_text);
+                            }
+                            else if (CheckListLine* checkListLine = dynamic_cast<CheckListLine*>(line)) {
+                                std::string decrypted_item(cipher_decrypt(caesar, checkListLine->GetItem().c_str()));
+                                checkListLine->SetItem(decrypted_item);
+                            }
+                            else if (ContactInfoLine* contactInfoLine = dynamic_cast<ContactInfoLine*>(line)) {
+                                std::string decrypted_name(cipher_decrypt(caesar, contactInfoLine->GetName().c_str()));
+                                std::string decrypted_email(cipher_decrypt(caesar, contactInfoLine->GetEmail().c_str()));
+                                contactInfoLine->SetName(decrypted_name);
+                                contactInfoLine->SetEmail(decrypted_email);
+                            }
+                            
+                        }
+                    }
+                    else if (userCipher == 2) {
+                        std::string key = "a";
+                        std::print("\nEnter a cipher key: ");
+                        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                        std::getline(std::cin, key);
+                        
+                        cipher_t* vigenere = cipher_create_vigenere(key.c_str());
+                        
+                        for (size_t i = 0; i < textEditor->GetCurrentLine(); i++) {
+                            Line* line = textEditor->GetLine(i);
+                            if (TextLine* textLine = dynamic_cast<TextLine*>(line)) {
+                                std::string decrypted_text(cipher_decrypt(vigenere, textLine->ToStr().c_str()));
+                                textLine->SetText(decrypted_text);
+                            }
+                            else if (CheckListLine* checkListLine = dynamic_cast<CheckListLine*>(line)) {
+                                std::string decrypted_item(cipher_decrypt(vigenere, checkListLine->GetItem().c_str()));
+                                checkListLine->SetItem(decrypted_item);
+                            }
+                            else if (ContactInfoLine* contactInfoLine = dynamic_cast<ContactInfoLine*>(line)) {
+                                std::string decrypted_name(cipher_decrypt(vigenere, contactInfoLine->GetName().c_str()));
+                                std::string decrypted_email(cipher_decrypt(vigenere, contactInfoLine->GetEmail().c_str()));
+                                contactInfoLine->SetName(decrypted_name);
+                                contactInfoLine->SetEmail(decrypted_email);
+                            }
+                            
+                        }
+                    }
+
+                }
+                else if (cipherCommand == 3) {
+                    ClearConsole();
+                    std::print("Enter the file name for saving: ");
+                    std::string file;
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    std::getline(std::cin, file);
+                    if (file.size() == 0 || file[0] == '\n') {
+                        std::println("Incorrect file name.");
+                    }
+                    else {
+                        textEditor->SaveToFile(file);
+                        std::println("Text has been saved successfully.");
+                    }            
+                }
+                else if (cipherCommand == 4) {
+                    ClearConsole();
+                    std::print("Enter the file name for loading: ");
+                    std::string file;
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                    std::getline(std::cin, file);
+                    if (textEditor->LoadFromFile(file)) {
+                        std::println("Text has been loaded successfully.");
+                    }
+                }
+                else if (cipherCommand == 5) {
+                    ClearConsole();
+                    std::println("\n-----------------------");
+                    textEditor->PrintAll();
+                    std::println("\n-----------------------");
+                }
+                else if (cipherCommand == 0) {
+                    ClearConsole();
+                    break;
+                }
+            }
         }
         else if (command == 0) {
             ClearConsole();

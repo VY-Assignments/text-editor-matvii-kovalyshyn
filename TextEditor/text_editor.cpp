@@ -70,6 +70,13 @@ ContactInfoLine::ContactInfoLine(const std::string& name, const std::string& ema
     this->email = email;
 }
 
+std::string ContactInfoLine::GetName() const {
+    return name;
+}
+std::string ContactInfoLine::GetEmail() const {
+    return email;
+}
+
 void ContactInfoLine::SetName(std::string name) {
     this->name = name;
 }

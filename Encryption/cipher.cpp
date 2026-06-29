@@ -5,7 +5,7 @@
 
 
 CaesarCipher::CaesarCipher(int key) {
-    if (_key > 26 || _key < -26) {
+    if (key > 26 || key < -26) {
         key %= 26;
     }
     _key = key;
