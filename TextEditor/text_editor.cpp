@@ -3,8 +3,9 @@
 #include <print>
 #include <vector>
 #include <fstream>
-#include "text_editor.hpp"
+#include <sstream>
 #include <dlfcn.h>
+#include "text_editor.hpp"
 #include "../Encryption/cipher_api.h"
 
 typedef void* cipher_t;
@@ -30,15 +31,28 @@ HistoryNode::HistoryNode(const Action& action) : action(action) {}
 
 
 TextLine::TextLine(const std::string& text) {
+    prefix = "Text:";
     this->text = text;
 }
 
 void TextLine::Print() const {
-    std::println("Text: {}", text);
+    std::println("{}", GetFormatted());
 }
 
 std::string TextLine::ToStr() const {
     return text;
+}
+
+std::string TextLine::GetText() const {
+    return text;
+}
+
+std::string TextLine::GetPrefix() const {
+    return prefix;
+}
+
+std::string TextLine::GetFormatted() const {
+    return std::format("{} {}", prefix, text);
 }
 
 void TextLine::SetText(const std::string& text) {
@@ -69,12 +83,12 @@ void TextLine::Serialize(int ckey, std::string vkey) {
     
     cipher_t* caesar = cipher_create_caesar(ckey);
     
-    std::string encrypted_text_c(cipher_encrypt(caesar, ToStr().c_str()));
+    std::string encrypted_text_c(cipher_encrypt(caesar, GetText().c_str()));
     SetText(encrypted_text_c);
 
     cipher_t* vigenere = cipher_create_vigenere(vkey.c_str());
 
-    std::string encrypted_text_v(cipher_encrypt(vigenere, ToStr().c_str()));
+    std::string encrypted_text_v(cipher_encrypt(vigenere, GetText().c_str()));
     SetText(encrypted_text_v);
     
     cipher_destroy(caesar);
@@ -107,12 +121,12 @@ void TextLine::Deserialize(int ckey, std::string vkey) {
     
     cipher_t* caesar = cipher_create_caesar(ckey);
     
-    std::string encrypted_text_c(cipher_decrypt(caesar, ToStr().c_str()));
+    std::string encrypted_text_c(cipher_decrypt(caesar, GetText().c_str()));
     SetText(encrypted_text_c);
 
     cipher_t* vigenere = cipher_create_vigenere(vkey.c_str());
 
-    std::string encrypted_text_v(cipher_decrypt(vigenere, ToStr().c_str()));
+    std::string encrypted_text_v(cipher_decrypt(vigenere, GetText().c_str()));
     SetText(encrypted_text_v);
     
     cipher_destroy(caesar);
@@ -125,6 +139,12 @@ void TextLine::Deserialize(int ckey, std::string vkey) {
 CheckListLine::CheckListLine(const std::string& item, bool checked) {
     this->item = item;
     this->checked = checked;
+    if (checked == 0) {
+        prefix = "[ ]";
+    }
+    else {
+        prefix = "[x]";
+    }
 }
 
 std::string CheckListLine::GetItem() const {
@@ -138,18 +158,28 @@ void CheckListLine::SetItem(std::string item) {
 void CheckListLine::ChangeChecked() {
     if (checked == 0) {
         checked = 1;
+        prefix = "[x]";
     }
     else {
         checked = 0;
+        prefix = "[ ]";
     }
 }
 
 void CheckListLine::Print() const {
-    std::println("[{}] {}", (checked ? "x" : " "), item);
+    std::println("{}", GetFormatted());
 }
 
 std::string CheckListLine::ToStr() const {
-    return std::format("[{}] {}", (checked ? "x" : " "), item);
+    return item;
+}
+
+std::string CheckListLine::GetPrefix() const {
+    return prefix;
+}
+
+std::string CheckListLine::GetFormatted() const {
+    return std::format("{} {}", prefix, item);
 }
 
 void CheckListLine::Serialize(int ckey, std::string vkey) {
@@ -230,6 +260,7 @@ void CheckListLine::Deserialize(int ckey, std::string vkey) {
 
 
 ContactInfoLine::ContactInfoLine(const std::string& name, const std::string& email) {
+    prefix = "Contact -";
     this->name = name;
     this->email = email;
 }
@@ -250,11 +281,19 @@ void ContactInfoLine::SetEmail(std::string email) {
 }
 
 void ContactInfoLine::Print() const {
-    std::println("Contact - {}, Email: {}", name, email);
+    std::println("{}", GetFormatted());
+}
+
+std::string ContactInfoLine::GetPrefix() const {
+    return prefix;
 }
 
 std::string ContactInfoLine::ToStr() const {
-    return std::format("Contact - {}, Email: {}", name, email);
+    return std::format("{} {}", name, email);
+}
+
+std::string ContactInfoLine::GetFormatted() const {
+    return std::format("{} {}, Email: {}", prefix, name, email);
 }
 
 void ContactInfoLine::Serialize(int ckey, std::string vkey) {
@@ -500,7 +539,7 @@ bool TextEditor::SaveToFile(std::string filename) const {
     }
 
     for (size_t i = 0; i < lines.size(); i++) {
-        file << lines[i]->ToStr() << std::endl;
+        file << lines[i]->GetFormatted() << std::endl;
     }
 
     file.close();
@@ -516,7 +555,30 @@ bool TextEditor::LoadFromFile(std::string filename) { // TO COMPLETE
     std::string fileLine;
     int i = 0;
     while (std::getline(file, fileLine)) {
-        Line* line = new TextLine(fileLine);
+        std::stringstream row(fileLine);
+        std::string linePrefix;
+        row >> linePrefix;
+        Line* line;
+        if (linePrefix == "[x]") {
+            fileLine.erase(0, fileLine.find("[x]") + 4);
+            line = new CheckListLine(fileLine, 1);
+        }
+        else if (linePrefix == "[") {
+            fileLine.erase(0, fileLine.find("[ ]") + 4);
+            line = new CheckListLine(fileLine, 0);
+        }
+        else if (linePrefix == "Contact") {
+            fileLine.erase(0, fileLine.find("Contact -") + 10);
+            size_t emailIndex = fileLine.find(", Email: ");
+            std::string name = fileLine.substr(0, emailIndex);
+            std::string email = fileLine.substr(emailIndex + 9);
+            line = new ContactInfoLine(name, email);
+        }
+        else {
+            fileLine.erase(0, fileLine.find(" ") + 1);
+            line = new TextLine(fileLine);
+        }
+        
         lines[i] = line;
         i++;
     }

@@ -35,9 +35,13 @@ public:
 
 
 class Line {
+protected:
+    std::string prefix;
 public:
     virtual void Print() const = 0;
     virtual std::string ToStr() const = 0;
+    virtual std::string GetPrefix() const = 0;
+    virtual std::string GetFormatted() const = 0; 
     virtual void Serialize(int ckey=0, std::string vkey="a") = 0;
     virtual void Deserialize(int ckey=0, std::string vkey="a") = 0;
     virtual ~Line() = default;
@@ -48,8 +52,11 @@ private:
     std::string text;
 public:
     TextLine(const std::string& text);
+    std::string GetText() const;
     void Print() const override;
     std::string ToStr() const override;
+    std::string GetPrefix() const override;
+    std::string GetFormatted() const override;
     void SetText(const std::string& text);
     void Serialize(int ckey=0, std::string vkey="a") override;
     void Deserialize(int ckey=0, std::string vkey="a") override;
@@ -66,6 +73,8 @@ public:
     void ChangeChecked();
     void Print() const override;
     std::string ToStr() const override;
+    std::string GetPrefix() const override;
+    std::string GetFormatted() const override;
     void Serialize(int ckey=0, std::string vkey="a") override;
     void Deserialize(int ckey=0, std::string vkey="a") override;
 };
@@ -82,6 +91,8 @@ public:
     void SetEmail(std::string email);
     void Print() const override;
     std::string ToStr() const override;
+    std::string GetPrefix() const override;
+    std::string GetFormatted() const override;
     void Serialize(int ckey=0, std::string vkey="a") override;
     void Deserialize(int ckey=0, std::string vkey="a") override;
 };

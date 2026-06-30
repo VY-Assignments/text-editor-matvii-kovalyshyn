@@ -27,7 +27,6 @@ int main() {
             std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
             continue;
         }
-        
 
         if (command == 1) {
             int line = textEditor->GetCurrentLine();
@@ -517,5 +516,6 @@ int main() {
             printf("Unknown command");
         }
     }
+    delete textEditor;
     return 0;
 }
