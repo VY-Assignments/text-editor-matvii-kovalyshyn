@@ -1,8 +1,20 @@
+#include <iostream>
 #include <string>
 #include <print>
 #include <vector>
 #include <fstream>
 #include "text_editor.hpp"
+#include <dlfcn.h>
+#include "../Encryption/cipher_api.h"
+
+typedef void* cipher_t;
+typedef cipher_t* (*create_caesar_fn)(int);
+typedef cipher_t* (*create_vigenere_fn)(const char*);
+typedef char* (*encrypt_fn)(cipher_t*, const char*);
+typedef char* (*decrypt_fn)(cipher_t*, const char*);
+typedef void (*destroy_fn)(cipher_t*);
+typedef void (*free_fn)(char*);
+
 
 
 Action::Action(ActionType actionType, int amount, int line, int index, std::string prevText, std::string newText) {
@@ -31,6 +43,82 @@ std::string TextLine::ToStr() const {
 
 void TextLine::SetText(const std::string& text) {
     this->text = text;
+}
+
+void TextLine::Serialize(int ckey, std::string vkey) {
+    void* handle = dlopen("Encryption/libcipher.so", RTLD_LAZY);
+    if (!handle) {
+        std::cerr << "Error library loading: " << dlerror() << std::endl;
+        return;
+    }
+
+    auto cipher_create_caesar = (create_caesar_fn)dlsym(handle, "cipher_create_caesar");
+    auto cipher_create_vigenere = (create_vigenere_fn)dlsym(handle, "cipher_create_vigenere");
+    auto cipher_encrypt = (encrypt_fn)dlsym(handle, "cipher_encrypt");
+    auto cipher_decrypt = (decrypt_fn)dlsym(handle, "cipher_decrypt");
+    auto cipher_destroy = (destroy_fn)dlsym(handle, "cipher_destroy");
+    auto cipher_free = (free_fn)dlsym(handle, "cipher_free");
+
+    if (!cipher_create_caesar || !cipher_create_vigenere || !cipher_encrypt || 
+        !cipher_decrypt || !cipher_destroy || !cipher_free) {
+        std::cerr << "Functions are not found." << std::endl;
+        dlclose(handle);
+        return;
+    }
+    
+    
+    cipher_t* caesar = cipher_create_caesar(ckey);
+    
+    std::string encrypted_text_c(cipher_encrypt(caesar, ToStr().c_str()));
+    SetText(encrypted_text_c);
+
+    cipher_t* vigenere = cipher_create_vigenere(vkey.c_str());
+
+    std::string encrypted_text_v(cipher_encrypt(vigenere, ToStr().c_str()));
+    SetText(encrypted_text_v);
+    
+    cipher_destroy(caesar);
+    cipher_destroy(vigenere);
+
+    dlclose(handle);
+}
+
+void TextLine::Deserialize(int ckey, std::string vkey) {
+    void* handle = dlopen("Encryption/libcipher.so", RTLD_LAZY);
+    if (!handle) {
+        std::cerr << "Error library loading: " << dlerror() << std::endl;
+        return;
+    }
+
+    auto cipher_create_caesar = (create_caesar_fn)dlsym(handle, "cipher_create_caesar");
+    auto cipher_create_vigenere = (create_vigenere_fn)dlsym(handle, "cipher_create_vigenere");
+    auto cipher_encrypt = (encrypt_fn)dlsym(handle, "cipher_encrypt");
+    auto cipher_decrypt = (decrypt_fn)dlsym(handle, "cipher_decrypt");
+    auto cipher_destroy = (destroy_fn)dlsym(handle, "cipher_destroy");
+    auto cipher_free = (free_fn)dlsym(handle, "cipher_free");
+
+    if (!cipher_create_caesar || !cipher_create_vigenere || !cipher_encrypt || 
+        !cipher_decrypt || !cipher_destroy || !cipher_free) {
+        std::cerr << "Functions are not found." << std::endl;
+        dlclose(handle);
+        return;
+    }
+    
+    
+    cipher_t* caesar = cipher_create_caesar(ckey);
+    
+    std::string encrypted_text_c(cipher_decrypt(caesar, ToStr().c_str()));
+    SetText(encrypted_text_c);
+
+    cipher_t* vigenere = cipher_create_vigenere(vkey.c_str());
+
+    std::string encrypted_text_v(cipher_decrypt(vigenere, ToStr().c_str()));
+    SetText(encrypted_text_v);
+    
+    cipher_destroy(caesar);
+    cipher_destroy(vigenere);
+
+    dlclose(handle);
 }
 
 
@@ -64,6 +152,82 @@ std::string CheckListLine::ToStr() const {
     return std::format("[{}] {}", (checked ? "x" : " "), item);
 }
 
+void CheckListLine::Serialize(int ckey, std::string vkey) {
+    void* handle = dlopen("Encryption/libcipher.so", RTLD_LAZY);
+    if (!handle) {
+        std::cerr << "Error library loading: " << dlerror() << std::endl;
+        return;
+    }
+
+    auto cipher_create_caesar = (create_caesar_fn)dlsym(handle, "cipher_create_caesar");
+    auto cipher_create_vigenere = (create_vigenere_fn)dlsym(handle, "cipher_create_vigenere");
+    auto cipher_encrypt = (encrypt_fn)dlsym(handle, "cipher_encrypt");
+    auto cipher_decrypt = (decrypt_fn)dlsym(handle, "cipher_decrypt");
+    auto cipher_destroy = (destroy_fn)dlsym(handle, "cipher_destroy");
+    auto cipher_free = (free_fn)dlsym(handle, "cipher_free");
+
+    if (!cipher_create_caesar || !cipher_create_vigenere || !cipher_encrypt || 
+        !cipher_decrypt || !cipher_destroy || !cipher_free) {
+        std::cerr << "Functions are not found." << std::endl;
+        dlclose(handle);
+        return;
+    }
+    
+    
+    cipher_t* caesar = cipher_create_caesar(ckey);
+    
+    std::string encrypted_item_c(cipher_encrypt(caesar, GetItem().c_str()));
+    SetItem(encrypted_item_c);
+
+    cipher_t* vigenere = cipher_create_vigenere(vkey.c_str());
+
+    std::string encrypted_item_v(cipher_encrypt(vigenere, GetItem().c_str()));
+    SetItem(encrypted_item_v);
+    
+    cipher_destroy(caesar);
+    cipher_destroy(vigenere);
+
+    dlclose(handle);
+}
+
+void CheckListLine::Deserialize(int ckey, std::string vkey) {
+    void* handle = dlopen("Encryption/libcipher.so", RTLD_LAZY);
+    if (!handle) {
+        std::cerr << "Error library loading: " << dlerror() << std::endl;
+        return;
+    }
+
+    auto cipher_create_caesar = (create_caesar_fn)dlsym(handle, "cipher_create_caesar");
+    auto cipher_create_vigenere = (create_vigenere_fn)dlsym(handle, "cipher_create_vigenere");
+    auto cipher_encrypt = (encrypt_fn)dlsym(handle, "cipher_encrypt");
+    auto cipher_decrypt = (decrypt_fn)dlsym(handle, "cipher_decrypt");
+    auto cipher_destroy = (destroy_fn)dlsym(handle, "cipher_destroy");
+    auto cipher_free = (free_fn)dlsym(handle, "cipher_free");
+
+    if (!cipher_create_caesar || !cipher_create_vigenere || !cipher_encrypt || 
+        !cipher_decrypt || !cipher_destroy || !cipher_free) {
+        std::cerr << "Functions are not found." << std::endl;
+        dlclose(handle);
+        return;
+    }
+    
+    
+    cipher_t* caesar = cipher_create_caesar(ckey);
+    
+    std::string encrypted_item_c(cipher_decrypt(caesar, GetItem().c_str()));
+    SetItem(encrypted_item_c);
+
+    cipher_t* vigenere = cipher_create_vigenere(vkey.c_str());
+
+    std::string encrypted_item_v(cipher_decrypt(vigenere, GetItem().c_str()));
+    SetItem(encrypted_item_v);
+    
+    cipher_destroy(caesar);
+    cipher_destroy(vigenere);
+
+    dlclose(handle);
+}
+
 
 ContactInfoLine::ContactInfoLine(const std::string& name, const std::string& email) {
     this->name = name;
@@ -93,6 +257,93 @@ std::string ContactInfoLine::ToStr() const {
     return std::format("Contact - {}, Email: {}", name, email);
 }
 
+void ContactInfoLine::Serialize(int ckey, std::string vkey) {
+    void* handle = dlopen("Encryption/libcipher.so", RTLD_LAZY);
+    if (!handle) {
+        std::cerr << "Error library loading: " << dlerror() << std::endl;
+        return;
+    }
+
+    auto cipher_create_caesar = (create_caesar_fn)dlsym(handle, "cipher_create_caesar");
+    auto cipher_create_vigenere = (create_vigenere_fn)dlsym(handle, "cipher_create_vigenere");
+    auto cipher_encrypt = (encrypt_fn)dlsym(handle, "cipher_encrypt");
+    auto cipher_decrypt = (decrypt_fn)dlsym(handle, "cipher_decrypt");
+    auto cipher_destroy = (destroy_fn)dlsym(handle, "cipher_destroy");
+    auto cipher_free = (free_fn)dlsym(handle, "cipher_free");
+
+    if (!cipher_create_caesar || !cipher_create_vigenere || !cipher_encrypt || 
+        !cipher_decrypt || !cipher_destroy || !cipher_free) {
+        std::cerr << "Functions are not found." << std::endl;
+        dlclose(handle);
+        return;
+    }
+    
+    
+    cipher_t* caesar = cipher_create_caesar(ckey);
+    
+    std::string encrypted_name_c(cipher_encrypt(caesar, GetName().c_str()));
+    SetName(encrypted_name_c);
+
+    std::string encrypted_email_c(cipher_encrypt(caesar, GetEmail().c_str()));
+    SetEmail(encrypted_email_c);
+
+    cipher_t* vigenere = cipher_create_vigenere(vkey.c_str());
+
+    std::string encrypted_name_v(cipher_encrypt(vigenere, GetName().c_str()));
+    SetName(encrypted_name_v);
+    std::string encrypted_email_v(cipher_encrypt(vigenere, GetEmail().c_str()));
+    SetEmail(encrypted_email_v);
+    
+    cipher_destroy(caesar);
+    cipher_destroy(vigenere);
+
+    dlclose(handle);
+}
+
+void ContactInfoLine::Deserialize(int ckey, std::string vkey) {
+    void* handle = dlopen("Encryption/libcipher.so", RTLD_LAZY);
+    if (!handle) {
+        std::cerr << "Error library loading: " << dlerror() << std::endl;
+        return;
+    }
+
+    auto cipher_create_caesar = (create_caesar_fn)dlsym(handle, "cipher_create_caesar");
+    auto cipher_create_vigenere = (create_vigenere_fn)dlsym(handle, "cipher_create_vigenere");
+    auto cipher_encrypt = (encrypt_fn)dlsym(handle, "cipher_encrypt");
+    auto cipher_decrypt = (decrypt_fn)dlsym(handle, "cipher_decrypt");
+    auto cipher_destroy = (destroy_fn)dlsym(handle, "cipher_destroy");
+    auto cipher_free = (free_fn)dlsym(handle, "cipher_free");
+
+    if (!cipher_create_caesar || !cipher_create_vigenere || !cipher_encrypt || 
+        !cipher_decrypt || !cipher_destroy || !cipher_free) {
+        std::cerr << "Functions are not found." << std::endl;
+        dlclose(handle);
+        return;
+    }
+    
+    
+      
+    cipher_t* caesar = cipher_create_caesar(ckey);
+    
+    std::string encrypted_name_c(cipher_decrypt(caesar, GetName().c_str()));
+    SetName(encrypted_name_c);
+
+    std::string encrypted_email_c(cipher_decrypt(caesar, GetEmail().c_str()));
+    SetEmail(encrypted_email_c);
+
+    cipher_t* vigenere = cipher_create_vigenere(vkey.c_str());
+
+    std::string encrypted_name_v(cipher_decrypt(vigenere, GetName().c_str()));
+    SetName(encrypted_name_v);
+    std::string encrypted_email_v(cipher_decrypt(vigenere, GetEmail().c_str()));
+    SetEmail(encrypted_email_v);
+    
+    
+    cipher_destroy(caesar);
+    cipher_destroy(vigenere);
+
+    dlclose(handle);
+}
 
 
 int TextEditor::GetCurrentLine() const {
@@ -188,6 +439,35 @@ bool TextEditor::Delete(int line, int index, int symbols) {
         }
     }
     return 0;
+}
+
+bool TextEditor::DeleteLine(int line) {
+    if (line < lines.size()) {
+        if (GetLineType(line) == "TextLine") { // TextLine
+            if (!lines.empty() && currentRow >= 0 && currentRow < lines.size()) {
+                delete lines[currentRow];
+                lines.erase(lines.begin() + currentRow);
+            }
+
+            currentRow = lines.size() - 1;
+            return 1;
+
+        }
+        else if (GetLineType(line) == "CheckListLine" || GetLineType(line) == "ContactInfoLine") { // CheckListLine and ContactInfoLine
+            if (!lines.empty() && currentRow >= 0 && currentRow < lines.size()) {
+                delete lines[currentRow];
+                lines.erase(lines.begin() + currentRow);
+            }
+
+            currentRow = lines.size() - 1;
+            if (currentRow < 0) {
+                currentRow = 0;
+            }
+            return 1;
+        }
+    }
+    return 0;
+    
 }
 
 bool TextEditor::Copy(int line, int index, int symbols) {
@@ -295,31 +575,9 @@ void TextEditor::Undo() {
             Delete(currentAction->action.line, currentAction->action.index, currentAction->action.amount);
             break;
         
-        case AddNewLineAction: {
-            short lineType = currentAction->action.amount;
-            if (lineType == 1) { // TextLine
-                if (!lines.empty() && currentRow >= 0 && currentRow < lines.size()) {
-                    delete lines[currentRow];
-                    lines.erase(lines.begin() + currentRow);
-                }
-
-                currentRow = lines.size() - 1;
-
-            }
-            else if (lineType == 2 || lineType == 3) { // CheckListLine and ContactInfoLine
-                if (!lines.empty() && currentRow >= 0 && currentRow < lines.size()) {
-                    delete lines[currentRow];
-                    lines.erase(lines.begin() + currentRow);
-                }
-
-                currentRow = lines.size() - 1;
-                if (currentRow < 0) {
-                    currentRow = 0;
-                }
-            }
-            
+        case AddNewLineAction:
+            DeleteLine(currentAction->action.line);
             break;
-        }
 
         case InsertWithReplacementAction:
             Delete(currentAction->action.line, currentAction->action.index, currentAction->action.newText.size());
@@ -330,6 +588,26 @@ void TextEditor::Undo() {
         case CutAction:
             Insert(currentAction->action.line, currentAction->action.index, currentAction->action.prevText);
             break;
+        // case DeleteLineAction:
+        //     Line* line = nullptr;
+        //     short lineType = currentAction->action.amount;
+        //     if (lineType == 1) { // TextLine
+        //         line = new TextLine("");
+        //     }    
+        //     else if (lineType == 2) { // CheckListLine
+        //         std::string item = currentAction->action.prevText;
+        //         line = new CheckListLine(item, 0); 
+        //     }
+        //     else if (lineType == 3) { // ContactInfoLine
+        //         std::string name = currentAction->action.prevText;
+        //         std::string email = currentAction->action.newText;
+        //         line = new ContactInfoLine(name, email);
+        //     }
+        //     if (line != nullptr) {
+        //         AddLine(line);
+        //         currentRow = lines.size() - 1;
+        //     }
+        //     break;
     }
     currentAction = currentAction->prev;
 }
@@ -384,10 +662,24 @@ void TextEditor::Redo() {
         case CutAction:
             Delete(nextNode->action.line, nextNode->action.index, nextNode->action.amount);
             break;
+        // case DeleteLineAction:
+        //     DeleteLine(nextNode->action.line);
+        //     break;
     }
     currentAction = nextNode;
 }
 
+void TextEditor::SerializeAll(int ckey, std::string vkey) {
+    for (size_t i = 0; i < lines.size(); i++) {
+        lines[i]->Serialize(ckey, vkey);
+    }
+}
+
+void TextEditor::DeserializeAll(int ckey, std::string vkey) {
+    for (size_t i = 0; i < lines.size(); i++) {
+        lines[i]->Deserialize(ckey, vkey);
+    }
+}
 
 TextEditor::~TextEditor() {
     for (size_t i = 0; i < lines.size(); i++) {

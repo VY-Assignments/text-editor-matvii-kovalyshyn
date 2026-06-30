@@ -12,7 +12,6 @@ enum ActionType {
     PasteAction,
     CutAction,
     DeleteLineAction,
-    DeleteAndInsertAction,
 };
 
 class Action {
@@ -39,6 +38,8 @@ class Line {
 public:
     virtual void Print() const = 0;
     virtual std::string ToStr() const = 0;
+    virtual void Serialize(int ckey=0, std::string vkey="a") = 0;
+    virtual void Deserialize(int ckey=0, std::string vkey="a") = 0;
     virtual ~Line() = default;
 };
 
@@ -50,6 +51,8 @@ public:
     void Print() const override;
     std::string ToStr() const override;
     void SetText(const std::string& text);
+    void Serialize(int ckey=0, std::string vkey="a") override;
+    void Deserialize(int ckey=0, std::string vkey="a") override;
 };
 
 class CheckListLine : public Line {
@@ -63,6 +66,8 @@ public:
     void ChangeChecked();
     void Print() const override;
     std::string ToStr() const override;
+    void Serialize(int ckey=0, std::string vkey="a") override;
+    void Deserialize(int ckey=0, std::string vkey="a") override;
 };
 
 class ContactInfoLine : public Line {
@@ -77,6 +82,8 @@ public:
     void SetEmail(std::string email);
     void Print() const override;
     std::string ToStr() const override;
+    void Serialize(int ckey=0, std::string vkey="a") override;
+    void Deserialize(int ckey=0, std::string vkey="a") override;
 };
 
 
@@ -99,6 +106,7 @@ public:
     bool InsertWithReplacement(int line, int index, const std::string& text);
     std::vector<int> Search(const std::string text) const; 
     bool Delete(int line, int index, int symbols);
+    bool DeleteLine(int line);
     bool Copy(int line, int index, int symbols);
     bool Paste(int line, int index);
     bool Cut(int line, int index, int symbols);
@@ -109,5 +117,7 @@ public:
     Action HistoryPop();
     void Undo();
     void Redo();
+    void SerializeAll(int ckey=0, std::string vkey="a");
+    void DeserializeAll(int ckey=0, std::string vkey="a");
     ~TextEditor();
 };
