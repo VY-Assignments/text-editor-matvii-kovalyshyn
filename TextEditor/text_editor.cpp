@@ -83,13 +83,21 @@ void TextLine::Serialize(int ckey, std::string vkey) {
     
     cipher_t* caesar = cipher_create_caesar(ckey);
     
-    std::string encrypted_text_c(cipher_encrypt(caesar, GetText().c_str()));
+    char* raw_encrypted_text_c = cipher_encrypt(caesar, GetText().c_str());
+
+    std::string encrypted_text_c(raw_encrypted_text_c);
     SetText(encrypted_text_c);
+
+    delete[] raw_encrypted_text_c;
 
     cipher_t* vigenere = cipher_create_vigenere(vkey.c_str());
 
-    std::string encrypted_text_v(cipher_encrypt(vigenere, GetText().c_str()));
+    char* raw_encrypted_text_v = cipher_encrypt(vigenere, GetText().c_str());
+
+    std::string encrypted_text_v(raw_encrypted_text_v);
     SetText(encrypted_text_v);
+
+    delete[] raw_encrypted_text_v;
     
     cipher_destroy(caesar);
     cipher_destroy(vigenere);
@@ -120,14 +128,22 @@ void TextLine::Deserialize(int ckey, std::string vkey) {
     
     
     cipher_t* caesar = cipher_create_caesar(ckey);
+
+    char* raw_decrypted_text_c = cipher_decrypt(caesar, GetText().c_str());
     
-    std::string encrypted_text_c(cipher_decrypt(caesar, GetText().c_str()));
-    SetText(encrypted_text_c);
+    std::string decrypted_text_c(raw_decrypted_text_c);
+    SetText(decrypted_text_c);
+
+    delete[] raw_decrypted_text_c;
 
     cipher_t* vigenere = cipher_create_vigenere(vkey.c_str());
 
-    std::string encrypted_text_v(cipher_decrypt(vigenere, GetText().c_str()));
-    SetText(encrypted_text_v);
+    char* raw_decrypted_text_v = cipher_decrypt(vigenere, GetText().c_str());
+
+    std::string decrypted_text_v(raw_decrypted_text_v);
+    SetText(decrypted_text_v);
+
+    delete[] raw_decrypted_text_v;
     
     cipher_destroy(caesar);
     cipher_destroy(vigenere);
@@ -206,13 +222,21 @@ void CheckListLine::Serialize(int ckey, std::string vkey) {
     
     cipher_t* caesar = cipher_create_caesar(ckey);
     
-    std::string encrypted_item_c(cipher_encrypt(caesar, GetItem().c_str()));
+    char* raw_encrypted_item_c = cipher_encrypt(caesar, GetItem().c_str());
+
+    std::string encrypted_item_c(raw_encrypted_item_c);
     SetItem(encrypted_item_c);
+    
+    delete[] raw_encrypted_item_c;
 
     cipher_t* vigenere = cipher_create_vigenere(vkey.c_str());
 
-    std::string encrypted_item_v(cipher_encrypt(vigenere, GetItem().c_str()));
+    char* raw_encrypted_item_v = cipher_encrypt(vigenere, GetItem().c_str());
+
+    std::string encrypted_item_v(raw_encrypted_item_v);
     SetItem(encrypted_item_v);
+
+    delete[] raw_encrypted_item_v;
     
     cipher_destroy(caesar);
     cipher_destroy(vigenere);
@@ -244,13 +268,21 @@ void CheckListLine::Deserialize(int ckey, std::string vkey) {
     
     cipher_t* caesar = cipher_create_caesar(ckey);
     
-    std::string encrypted_item_c(cipher_decrypt(caesar, GetItem().c_str()));
-    SetItem(encrypted_item_c);
+    char* raw_decrypted_item_c = cipher_decrypt(caesar, GetItem().c_str());
+
+    std::string decrypted_item_c(raw_decrypted_item_c);
+    SetItem(decrypted_item_c);
+
+    delete[] raw_decrypted_item_c;
 
     cipher_t* vigenere = cipher_create_vigenere(vkey.c_str());
 
-    std::string encrypted_item_v(cipher_decrypt(vigenere, GetItem().c_str()));
-    SetItem(encrypted_item_v);
+    char* raw_decrypted_item_v = cipher_decrypt(vigenere, GetItem().c_str());
+
+    std::string decrypted_item_v(raw_decrypted_item_v);
+    SetItem(decrypted_item_v);
+
+    delete[] raw_decrypted_item_v;
     
     cipher_destroy(caesar);
     cipher_destroy(vigenere);
@@ -319,20 +351,37 @@ void ContactInfoLine::Serialize(int ckey, std::string vkey) {
     
     
     cipher_t* caesar = cipher_create_caesar(ckey);
+
+    char* raw_encrypted_name_c = cipher_encrypt(caesar, GetName().c_str());
     
-    std::string encrypted_name_c(cipher_encrypt(caesar, GetName().c_str()));
+    std::string encrypted_name_c(raw_encrypted_name_c);
     SetName(encrypted_name_c);
 
-    std::string encrypted_email_c(cipher_encrypt(caesar, GetEmail().c_str()));
+    delete[] raw_encrypted_name_c;
+
+    char* raw_encrypted_email_c = cipher_encrypt(caesar, GetEmail().c_str());
+
+    std::string encrypted_email_c(raw_encrypted_email_c);
     SetEmail(encrypted_email_c);
+
+    delete[] raw_encrypted_email_c;
 
     cipher_t* vigenere = cipher_create_vigenere(vkey.c_str());
 
-    std::string encrypted_name_v(cipher_encrypt(vigenere, GetName().c_str()));
+    char* raw_encrypted_name_v = cipher_encrypt(vigenere, GetName().c_str());
+
+    std::string encrypted_name_v(raw_encrypted_name_v);
     SetName(encrypted_name_v);
-    std::string encrypted_email_v(cipher_encrypt(vigenere, GetEmail().c_str()));
+
+    delete[] raw_encrypted_name_v;
+
+    char* raw_encrypted_email_v = cipher_encrypt(vigenere, GetEmail().c_str());
+
+    std::string encrypted_email_v(raw_encrypted_email_v);
     SetEmail(encrypted_email_v);
     
+    delete[] raw_encrypted_email_v;
+
     cipher_destroy(caesar);
     cipher_destroy(vigenere);
 
@@ -363,20 +412,36 @@ void ContactInfoLine::Deserialize(int ckey, std::string vkey) {
     
       
     cipher_t* caesar = cipher_create_caesar(ckey);
-    
-    std::string encrypted_name_c(cipher_decrypt(caesar, GetName().c_str()));
-    SetName(encrypted_name_c);
 
-    std::string encrypted_email_c(cipher_decrypt(caesar, GetEmail().c_str()));
-    SetEmail(encrypted_email_c);
+    char* raw_decrypted_name_c = cipher_decrypt(caesar, GetName().c_str());
+    
+    std::string decrypted_name_c(raw_decrypted_name_c);
+    SetName(decrypted_name_c);
+
+    delete[] raw_decrypted_name_c;
+
+    char* raw_decrypted_email_c = cipher_decrypt(caesar, GetEmail().c_str());
+
+    std::string decrypted_email_c(raw_decrypted_email_c);
+    SetEmail(decrypted_email_c);
+
+    delete[] raw_decrypted_email_c;
 
     cipher_t* vigenere = cipher_create_vigenere(vkey.c_str());
 
-    std::string encrypted_name_v(cipher_decrypt(vigenere, GetName().c_str()));
-    SetName(encrypted_name_v);
-    std::string encrypted_email_v(cipher_decrypt(vigenere, GetEmail().c_str()));
-    SetEmail(encrypted_email_v);
+    char* raw_decrypted_name_v = cipher_decrypt(vigenere, GetName().c_str());
+
+    std::string decrypted_name_v(raw_decrypted_name_v);
+    SetName(decrypted_name_v);
+
+    delete[] raw_decrypted_name_v;
+
+    char* raw_decrypted_email_v = cipher_decrypt(vigenere, GetEmail().c_str());
+
+    std::string decrypted_email_v(raw_decrypted_email_v);
+    SetEmail(decrypted_email_v);
     
+    delete[] raw_decrypted_email_v;
     
     cipher_destroy(caesar);
     cipher_destroy(vigenere);
@@ -552,6 +617,12 @@ bool TextEditor::LoadFromFile(std::string filename) { // TO COMPLETE
     if (!file.is_open()) {
         return 0;
     }
+
+    for (size_t i = 0; i < lines.size(); i++) {
+        delete lines[i];
+    }
+    lines.clear();
+
     std::string fileLine;
     int i = 0;
     while (std::getline(file, fileLine)) {
@@ -579,7 +650,7 @@ bool TextEditor::LoadFromFile(std::string filename) { // TO COMPLETE
             line = new TextLine(fileLine);
         }
         
-        lines[i] = line;
+        lines.push_back(line);
         i++;
     }
 
@@ -591,6 +662,8 @@ void TextEditor::HistoryPush(Action& action) {
     HistoryNode* newNode = new HistoryNode(action);
     if (head == nullptr) {
         head = newNode;
+        currentAction = newNode;
+        return;
     }
 
     if (currentAction != nullptr) {
@@ -603,6 +676,11 @@ void TextEditor::HistoryPush(Action& action) {
 
         currentAction->next = newNode;
         newNode->prev = currentAction;
+    }
+    else {
+        newNode->next = head;
+        head->prev = newNode;
+        head = newNode;
     }
     currentAction = newNode;
 }
@@ -746,5 +824,12 @@ void TextEditor::DeserializeAll(int ckey, std::string vkey) {
 TextEditor::~TextEditor() {
     for (size_t i = 0; i < lines.size(); i++) {
         delete lines[i];
+    }
+    HistoryNode* current = head;
+    while (current != nullptr) {
+        HistoryNode* nextNode = current->next;
+        
+        delete current;         
+        current = nextNode;
     }
 }
